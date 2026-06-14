@@ -397,6 +397,14 @@ svg {
   background: rgba(45, 255, 135, 0.12);
 }
 
+.category-card.is-selected {
+  border-color: rgba(45, 255, 135, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(45, 255, 135, 0.16), transparent 9rem),
+    rgba(23, 50, 75, 0.9);
+  box-shadow: 0 0 22px rgba(45, 255, 135, 0.12);
+}
+
 .auth-card {
   display: grid;
   gap: 0.95rem;

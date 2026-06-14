@@ -436,6 +436,7 @@ function App() {
   const [accountMode, setAccountMode] = useState<AccountMode>('local');
   const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('category');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [completedCategoryIds, setCompletedCategoryIds] = useState<string[]>([]);
   const [selections, setSelections] = useState<Record<string, CategorySelection>>({});
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>(['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
@@ -449,6 +450,13 @@ function App() {
 
   const activeCategory = activeCategoryIndex === null ? null : categories[activeCategoryIndex];
   const activeSelection = activeCategory ? selections[activeCategory.id] ?? defaultSelection() : defaultSelection();
+  const selectedCategoryNames = useMemo(
+    () =>
+      selectedCategoryIds
+        .map((categoryId) => categories.find((category) => category.id === categoryId)?.name)
+        .filter((name): name is string => Boolean(name)),
+    [selectedCategoryIds],
+  );
   const activeSteps = useMemo<OnboardingStep[]>(() => {
     if (!activeCategory) {
       return ['category'];
@@ -478,23 +486,32 @@ function App() {
   }, [activeCategory, activeSelection.genres]);
 
   const onboardingProgress = useMemo(() => {
-    const completed = completedCategoryIds.length;
+    const selectedCount = selectedCategoryIds.length;
+    const completed = selectedCategoryIds.filter((categoryId) => completedCategoryIds.includes(categoryId)).length;
 
     if (!activeCategory) {
-      return Math.round((completed / categories.length) * 100);
+      return selectedCount ? Math.round((completed / selectedCount) * 100) : 0;
     }
 
     const stepIndex = Math.max(activeSteps.indexOf(onboardingStep), 0);
-    return Math.round(((completed + (stepIndex + 1) / activeSteps.length) / categories.length) * 100);
-  }, [activeCategory, activeSteps, completedCategoryIds.length, onboardingStep]);
+    return Math.round(((completed + (stepIndex + 1) / activeSteps.length) / Math.max(selectedCount, 1)) * 100);
+  }, [activeCategory, activeSteps, completedCategoryIds, onboardingStep, selectedCategoryIds]);
+
+  const visibleTrackedItems = useMemo(() => {
+    if (selectedCategoryNames.length === 0) {
+      return trackedItems;
+    }
+
+    return trackedItems.filter((item) => selectedCategoryNames.includes(item.category));
+  }, [selectedCategoryNames, trackedItems]);
 
   const groupedTrackedItems = useMemo(() => {
-    return trackedItems.reduce<Record<string, TrackedItem[]>>((groups, item) => {
+    return visibleTrackedItems.reduce<Record<string, TrackedItem[]>>((groups, item) => {
       groups[item.category] = groups[item.category] ?? [];
       groups[item.category].push(item);
       return groups;
     }, {});
-  }, [trackedItems]);
+  }, [visibleTrackedItems]);
 
   const updateSelection = (categoryId: string, updater: (current: CategorySelection) => CategorySelection) => {
     setSelections((current) => ({
@@ -531,6 +548,8 @@ function App() {
   const startLocalMode = () => {
     setAccountMode('local');
     setScreen('onboarding');
+    setSelectedCategoryIds([]);
+    setCompletedCategoryIds([]);
     resetOnboardingScreen();
   };
 
@@ -544,18 +563,36 @@ function App() {
     setAccountMode(mode);
     setAuthMessage('');
     setScreen('onboarding');
+    setSelectedCategoryIds([]);
+    setCompletedCategoryIds([]);
     resetOnboardingScreen();
   };
 
-  const selectCategory = (index: number) => {
+  const toggleCategoryForOnboarding = (index: number) => {
     const category = categories[index];
 
     if (completedCategoryIds.includes(category.id)) {
       return;
     }
 
-    setActiveCategoryIndex(index);
-    setOnboardingStep(category.platforms?.length ? 'platforms' : 'genres');
+    setSelectedCategoryIds((current) =>
+      current.includes(category.id)
+        ? current.filter((categoryId) => categoryId !== category.id)
+        : [...current, category.id],
+    );
+  };
+
+  const startSelectedCategories = () => {
+    const nextCategoryId = selectedCategoryIds.find((categoryId) => !completedCategoryIds.includes(categoryId));
+    const nextCategoryIndex = categories.findIndex((category) => category.id === nextCategoryId);
+
+    if (nextCategoryIndex < 0) {
+      return;
+    }
+
+    const nextCategory = categories[nextCategoryIndex];
+    setActiveCategoryIndex(nextCategoryIndex);
+    setOnboardingStep(nextCategory.platforms?.length ? 'platforms' : 'genres');
   };
 
   const goBackStep = () => {
@@ -590,12 +627,29 @@ function App() {
       return;
     }
 
-    setCompletedCategoryIds((current) => (current.includes(activeCategory.id) ? current : [...current, activeCategory.id]));
-    resetOnboardingScreen();
+    const nextCompletedCategoryIds = completedCategoryIds.includes(activeCategory.id)
+      ? completedCategoryIds
+      : [...completedCategoryIds, activeCategory.id];
+    const nextCategoryId = selectedCategoryIds.find((categoryId) => !nextCompletedCategoryIds.includes(categoryId));
+    const nextCategoryIndex = categories.findIndex((category) => category.id === nextCategoryId);
+
+    setCompletedCategoryIds(nextCompletedCategoryIds);
+
+    if (nextCategoryIndex >= 0) {
+      const nextCategory = categories[nextCategoryIndex];
+      setActiveCategoryIndex(nextCategoryIndex);
+      setOnboardingStep(nextCategory.platforms?.length ? 'platforms' : 'genres');
+      return;
+    }
+
+    openDashboard(nextCompletedCategoryIds);
   };
 
-  const openDashboard = () => {
-    const selectedItems = categories.flatMap((category) => {
+  const openDashboard = (completedIds = completedCategoryIds) => {
+    const categoriesToUse = selectedCategoryIds.length
+      ? categories.filter((category) => selectedCategoryIds.includes(category.id))
+      : categories;
+    const selectedItems = categoriesToUse.flatMap((category) => {
       const selection = selections[category.id];
       if (!selection) {
         return [];
@@ -618,7 +672,8 @@ function App() {
         STORAGE_KEY,
         JSON.stringify({
           accountMode,
-          completedCategoryIds,
+          completedCategoryIds: completedIds,
+          selectedCategoryIds,
           selections,
           savedAt: new Date().toISOString(),
         }),
@@ -683,10 +738,11 @@ function App() {
           completedCategoryIds={completedCategoryIds}
           generatedSuggestions={generatedSuggestions}
           progress={onboardingProgress}
+          selectedCategoryIds={selectedCategoryIds}
           onBackStep={goBackStep}
-          onCategorySelect={selectCategory}
+          onCategoryStart={startSelectedCategories}
+          onCategoryToggle={toggleCategoryForOnboarding}
           onCompleteCategory={completeCategory}
-          onFinish={openDashboard}
           onNextStep={goNextStep}
           onRadiusChange={(radius) => activeCategory && updateSelection(activeCategory.id, (current) => ({ ...current, radius }))}
           onToggle={(key, value) => activeCategory && toggleSelection(activeCategory.id, key, value)}
@@ -697,7 +753,8 @@ function App() {
           activeTab={dashboardTab}
           groupedTrackedItems={groupedTrackedItems}
           selectedAlerts={selectedAlerts}
-          trackedItems={trackedItems}
+          selectedCategoryNames={selectedCategoryNames}
+          trackedItems={visibleTrackedItems}
           onAddRecommendation={addRecommendation}
           onAlertToggle={toggleAlert}
           onRemoveTrackedItem={removeTrackedItem}
@@ -854,10 +911,11 @@ function OnboardingScreen({
   completedCategoryIds,
   generatedSuggestions,
   progress,
+  selectedCategoryIds,
   onBackStep,
-  onCategorySelect,
+  onCategoryStart,
+  onCategoryToggle,
   onCompleteCategory,
-  onFinish,
   onNextStep,
   onRadiusChange,
   onToggle,
@@ -870,15 +928,19 @@ function OnboardingScreen({
   completedCategoryIds: string[];
   generatedSuggestions: string[];
   progress: number;
+  selectedCategoryIds: string[];
   onBackStep: () => void;
-  onCategorySelect: (index: number) => void;
+  onCategoryStart: () => void;
+  onCategoryToggle: (index: number) => void;
   onCompleteCategory: () => void;
-  onFinish: () => void;
   onNextStep: () => void;
   onRadiusChange: (radius: string) => void;
   onToggle: (key: keyof Pick<CategorySelection, 'genres' | 'suggestions' | 'preferences' | 'platforms'>, value: string) => void;
 }) {
   const completedCount = completedCategoryIds.length;
+  const remainingSelectedCount = activeCategory
+    ? selectedCategoryIds.filter((categoryId) => categoryId !== activeCategory.id && !completedCategoryIds.includes(categoryId)).length
+    : selectedCategoryIds.filter((categoryId) => !completedCategoryIds.includes(categoryId)).length;
 
   return (
     <section className="screen stacked-screen onboarding-screen" aria-labelledby="onboarding-title">
@@ -893,32 +955,31 @@ function OnboardingScreen({
         <>
           <ScreenHeader
             kicker={accountMode === 'local' ? 'Local mode active' : 'Account setup'}
-            title="Build your first Radar"
-            description="Complete one category at a time. You can start with the interests that matter most and add more later."
+            title="Choose what is on your Radar"
+            description="Select multiple categories first. Radar will then walk you through each selected category one at a time."
           />
 
           <div className="category-status">
-            <span>{completedCount} categories configured</span>
-            {completedCount > 0 && (
-              <button className="secondary-button compact" type="button" onClick={onFinish}>
-                Finish and open Radar
-              </button>
-            )}
+            <span>{selectedCategoryIds.length} selected • {completedCount} complete</span>
+            <button className="secondary-button compact" disabled={remainingSelectedCount === 0} type="button" onClick={onCategoryStart}>
+              Start selected setup
+            </button>
           </div>
 
           <div className="category-list" aria-label="Radar categories">
             {allCategories.map((category, index) => {
               const isCompleted = completedCategoryIds.includes(category.id);
+              const isSelected = selectedCategoryIds.includes(category.id);
               return (
                 <button
-                  className={`category-card ${isCompleted ? 'is-complete' : ''}`}
+                  className={`category-card ${isSelected ? 'is-selected' : ''} ${isCompleted ? 'is-complete' : ''}`}
                   disabled={isCompleted}
                   key={category.id}
                   type="button"
-                  onClick={() => onCategorySelect(index)}
+                  onClick={() => onCategoryToggle(index)}
                 >
                   <span>
-                    {isCompleted && <Check size={16} aria-hidden="true" />}
+                    {(isSelected || isCompleted) && <Check size={16} aria-hidden="true" />}
                     {category.name}
                   </span>
                   <small>{category.eyebrow}</small>
@@ -1019,9 +1080,9 @@ function OnboardingScreen({
           {activeStep === 'summary' && (
             <SummaryStep
               category={activeCategory}
+              remainingSelectedCount={remainingSelectedCount}
               selection={activeSelection}
               onComplete={onCompleteCategory}
-              onFinish={onFinish}
             />
           )}
         </div>
@@ -1077,19 +1138,23 @@ function ChoiceStep({
 
 function SummaryStep({
   category,
+  remainingSelectedCount,
   selection,
   onComplete,
-  onFinish,
 }: {
   category: CategoryConfig;
+  remainingSelectedCount: number;
   selection: CategorySelection;
   onComplete: () => void;
-  onFinish: () => void;
 }) {
   return (
     <div>
       <h2>{category.name} summary</h2>
-      <p className="step-description">This category is ready. Save it and move to another category, or open the home dashboard.</p>
+      <p className="step-description">
+        {remainingSelectedCount > 0
+          ? `This category is ready. Save it and Radar will continue with ${remainingSelectedCount} more selected ${remainingSelectedCount === 1 ? 'category' : 'categories'}.`
+          : 'This is the last selected category. Saving it will open your filtered home dashboard.'}
+      </p>
       <div className="summary-grid">
         <SummaryRow label={category.platforms?.length ? 'Platforms' : 'Category'} values={category.platforms?.length ? selection.platforms : [category.name]} />
         <SummaryRow label="Genres / interests" values={selection.genres} />
@@ -1099,10 +1164,7 @@ function SummaryStep({
       </div>
       <div className="button-stack">
         <button className="primary-button full-width" type="button" onClick={onComplete}>
-          Save and choose next category
-        </button>
-        <button className="secondary-button full-width" type="button" onClick={onFinish}>
-          Save and open Radar
+          {remainingSelectedCount > 0 ? 'Save and continue' : 'Save and open filtered Radar'}
         </button>
       </div>
     </div>
@@ -1122,6 +1184,7 @@ function DashboardScreen({
   activeTab,
   groupedTrackedItems,
   selectedAlerts,
+  selectedCategoryNames,
   trackedItems,
   onAddRecommendation,
   onAlertToggle,
@@ -1132,6 +1195,7 @@ function DashboardScreen({
   activeTab: DashboardTab;
   groupedTrackedItems: Record<string, TrackedItem[]>;
   selectedAlerts: string[];
+  selectedCategoryNames: string[];
   trackedItems: TrackedItem[];
   onAddRecommendation: (title: string, status: TrackStatus) => void;
   onAlertToggle: (option: string) => void;
@@ -1142,7 +1206,12 @@ function DashboardScreen({
   return (
     <section className="dashboard-shell" aria-label="Radar dashboard">
       <div className="dashboard-content">
-        {activeTab === 'home' && <HomeTab />}
+        {activeTab === 'home' && (
+          <HomeTab
+            selectedCategoryNames={selectedCategoryNames}
+            trackedItems={trackedItems}
+          />
+        )}
         {activeTab === 'radar' && (
           <RadarTab
             groupedTrackedItems={groupedTrackedItems}
@@ -1165,10 +1234,30 @@ function DashboardScreen({
   );
 }
 
-function HomeTab() {
-  const highPriority = briefingItems.filter((item) => item.priority === 'high');
-  const upcoming = briefingItems.filter((item) => item.priority === 'upcoming');
-  const news = briefingItems.filter((item) => item.priority === 'news');
+function HomeTab({
+  selectedCategoryNames,
+  trackedItems,
+}: {
+  selectedCategoryNames: string[];
+  trackedItems: TrackedItem[];
+}) {
+  const shouldFilter = selectedCategoryNames.length > 0;
+  const selectedBriefingItems = shouldFilter
+    ? briefingItems.filter((item) => selectedCategoryNames.includes(item.category))
+    : briefingItems;
+  const generatedItems: BriefingItem[] = trackedItems.slice(0, 5).map((item) => ({
+    id: `personalized-${item.id}`,
+    category: item.category,
+    title: `${item.name} is on your Radar`,
+    detail: `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for the update types you selected during onboarding.`,
+    priority: item.status === 'watchlist' ? 'recommendation' : 'news',
+    action: actionForCategory(item.category),
+  }));
+  const personalizedItems = uniqueBriefingItems([...selectedBriefingItems, ...generatedItems]);
+  const highPriority = personalizedItems.filter((item) => item.priority === 'high');
+  const upcoming = personalizedItems.filter((item) => item.priority === 'upcoming');
+  const news = personalizedItems.filter((item) => item.priority === 'news');
+  const visibleRecommendations = !shouldFilter || selectedCategoryNames.includes('Music') ? recommendations : [];
 
   return (
     <div className="tab-panel">
@@ -1179,15 +1268,19 @@ function HomeTab() {
         </div>
         <div className="pulse-badge">
           <Zap size={16} aria-hidden="true" />
-          4 updates
+          {personalizedItems.length} updates
         </div>
       </header>
 
       <section className="briefing-card">
         <h2>Daily Briefing</h2>
-        <p>Your most important actionable updates in one place.</p>
+        <p>
+          {shouldFilter
+            ? `Filtered for ${selectedCategoryNames.join(', ')}.`
+            : 'Your most important actionable updates in one place.'}
+        </p>
         <div className="briefing-list">
-          {briefingItems.map((item) => (
+          {personalizedItems.map((item) => (
             <NotificationCard key={item.id} item={item} />
           ))}
         </div>
@@ -1212,7 +1305,13 @@ function HomeTab() {
       </DashboardSection>
 
       <DashboardSection title="Recommendations" icon={<Sparkles size={18} />}>
-        {recommendations.map((item) => (
+        {visibleRecommendations.length === 0 && (
+          <div className="recommendation-card">
+            <strong>Recommendations are filtered</strong>
+            <p>Radar will generate recommendations from the categories and interests you selected.</p>
+          </div>
+        )}
+        {visibleRecommendations.map((item) => (
           <div className="recommendation-card" key={item.title}>
             <strong>{item.title}</strong>
             <p>{item.detail}</p>
@@ -1224,6 +1323,50 @@ function HomeTab() {
       </DashboardSection>
     </div>
   );
+}
+
+function actionForCategory(category: string) {
+  if (category === 'Music' || category === 'Comedians' || category === 'Sports' || category === 'Local Events') {
+    return 'View Tickets';
+  }
+
+  if (category === 'Movies') {
+    return 'View Showtimes';
+  }
+
+  if (category === 'TV Shows') {
+    return 'Watch';
+  }
+
+  if (category === 'Podcasts') {
+    return 'Listen';
+  }
+
+  if (category === 'Video Games') {
+    return 'Read Patch Notes';
+  }
+
+  if (category === 'Products & Brands') {
+    return 'View Product';
+  }
+
+  if (category === 'Authors / Books') {
+    return 'View Release';
+  }
+
+  return 'View Update';
+}
+
+function uniqueBriefingItems(items: BriefingItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.category}-${item.title}`.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function NotificationCard({ compact = false, item }: { compact?: boolean; item: BriefingItem }) {

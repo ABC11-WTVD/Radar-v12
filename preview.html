@@ -244,6 +244,14 @@
         color: var(--text);
       }
 
+      .choice.selected {
+        border-color: rgba(45, 255, 135, 0.72);
+        background:
+          radial-gradient(circle at top right, rgba(45, 255, 135, 0.16), transparent 9rem),
+          rgba(23, 50, 75, 0.9);
+        box-shadow: 0 0 22px rgba(45, 255, 135, 0.12);
+      }
+
       .choice strong {
         font-size: 1.05rem;
       }
@@ -485,8 +493,12 @@
 
         <div id="category-step">
           <p class="eyebrow">Local mode active</p>
-          <h1 class="title">Build your first Radar</h1>
-          <p>Complete one category at a time. Start with what matters most and add more later.</p>
+          <h1 class="title">Choose what is on your Radar</h1>
+          <p>Select multiple categories first. Radar will then walk you through each selected category one at a time.</p>
+          <div class="card" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
+            <strong><span id="category-count">0</span> selected</strong>
+            <button class="secondary" id="start-selected" type="button" disabled>Start selected setup</button>
+          </div>
           <div class="list" id="categories"></div>
         </div>
 
@@ -507,43 +519,20 @@
               <p class="eyebrow">Since yesterday</p>
               <h1 class="title">Radar Briefing</h1>
             </div>
-            <span class="badge">4 updates</span>
+            <span class="badge"><span id="update-count">0</span> updates</span>
           </header>
 
           <article class="briefing">
             <h2>Daily Briefing</h2>
-            <p>Your most important actionable updates in one place.</p>
-            <div class="stack">
-              <article class="tracked">
-                <h3>Metallica announced a Chicago show</h3>
-                <p>Presale opens tomorrow at 10:00 AM.</p>
-                <button class="action">Buy Tickets</button>
-              </article>
-              <article class="tracked">
-                <h3>Nate Bargatze appeared on SmartLess</h3>
-                <p>New interview available on Spotify, YouTube, and Apple Podcasts.</p>
-                <button class="action">Listen</button>
-              </article>
-              <article class="tracked">
-                <h3>Fantastic Four tickets are available</h3>
-                <p>Nearby theaters added opening weekend showtimes.</p>
-                <button class="action">View Showtimes</button>
-              </article>
-              <article class="tracked">
-                <h3>Fortnite patch released</h3>
-                <p>Balance changes, new event quests, and outage notes are live.</p>
-                <button class="action">Read Patch Notes</button>
-              </article>
-            </div>
+            <p id="briefing-filter">Your most important actionable updates in one place.</p>
+            <div class="stack" id="home-list"></div>
           </article>
         </div>
 
         <div class="tab" id="tab-radar">
           <p class="eyebrow">Everything you follow</p>
           <h1 class="title">Your Radar</h1>
-          <article class="tracked"><h3>Tool</h3><span class="status">Following</span></article>
-          <article class="tracked"><h3>Pantera</h3><span class="status">Following</span></article>
-          <article class="tracked"><h3>Gojira</h3><span class="status">Watchlist</span></article>
+          <div class="stack" id="radar-list"></div>
         </div>
 
         <div class="tab" id="tab-discover">
@@ -788,8 +777,80 @@
         },
       ];
       const alerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      const briefingData = [
+        {
+          category: "Music",
+          title: "Metallica announced a Chicago show",
+          detail: "Presale opens tomorrow at 10:00 AM.",
+          action: "Buy Tickets",
+        },
+        {
+          category: "Comedians",
+          title: "Nate Bargatze appeared on SmartLess",
+          detail: "New interview available on Spotify, YouTube, and Apple Podcasts.",
+          action: "Listen",
+        },
+        {
+          category: "Movies",
+          title: "Fantastic Four tickets are available",
+          detail: "Nearby theaters added opening weekend showtimes.",
+          action: "View Showtimes",
+        },
+        {
+          category: "Video Games",
+          title: "Fortnite patch released",
+          detail: "Balance changes, new event quests, and outage notes are live.",
+          action: "Read Patch Notes",
+        },
+        {
+          category: "Products & Brands",
+          title: "Milwaukee restock alert",
+          detail: "Selected tools are back in stock at nearby retailers.",
+          action: "View Product",
+        },
+        {
+          category: "Local Events",
+          title: "Food festival added near you",
+          detail: "A weekend food truck event matches your local event interests.",
+          action: "Add To Calendar",
+        },
+        {
+          category: "TV Shows",
+          title: "New streaming availability found",
+          detail: "Radar found a season update for one of your selected TV interests.",
+          action: "Watch",
+        },
+        {
+          category: "Podcasts",
+          title: "New podcast episode matched",
+          detail: "A new episode matches your selected podcast genres.",
+          action: "Listen",
+        },
+        {
+          category: "Authors / Books",
+          title: "Book release signal found",
+          detail: "Radar found a release update in one of your selected book interests.",
+          action: "View Release",
+        },
+        {
+          category: "YouTubers / Creators",
+          title: "Creator upload matched",
+          detail: "A new creator update matches your selected creator areas.",
+          action: "Watch",
+        },
+        {
+          category: "Sports",
+          title: "Sports schedule update found",
+          detail: "Radar found a schedule signal for your selected sports interests.",
+          action: "View Details",
+        },
+      ];
       let categoryIndex = 0;
       let step = "genres";
+      let selectedCategoryIndexes = [];
+      let onboardingQueue = [];
+      let queuePosition = 0;
+      let completedSelections = [];
       let selectedGenres = [];
       let selectedSuggestions = [];
       let selectedPreferences = [];
@@ -802,20 +863,18 @@
       function renderCategories() {
         const container = document.getElementById("categories");
         container.innerHTML = "";
+        document.getElementById("category-count").textContent = selectedCategoryIndexes.length;
+        document.getElementById("start-selected").disabled = selectedCategoryIndexes.length === 0;
         categories.forEach((category, index) => {
           const button = document.createElement("button");
-          button.className = "choice";
+          button.className = `choice ${selectedCategoryIndexes.includes(index) ? "selected" : ""}`;
           button.type = "button";
           button.innerHTML = `<strong>${category.name}</strong><span>${category.blurb}</span>`;
           button.addEventListener("click", () => {
-            categoryIndex = index;
-            step = "genres";
-            selectedGenres = [];
-            selectedSuggestions = [];
-            selectedPreferences = [];
-            document.getElementById("category-step").hidden = true;
-            document.getElementById("flow-step").hidden = false;
-            renderFlow();
+            selectedCategoryIndexes = selectedCategoryIndexes.includes(index)
+              ? selectedCategoryIndexes.filter((categoryNumber) => categoryNumber !== index)
+              : [...selectedCategoryIndexes, index];
+            renderCategories();
           });
           container.appendChild(button);
         });
@@ -824,6 +883,28 @@
       function updateProgress(percent) {
         document.getElementById("progress-label").textContent = `${percent}%`;
         document.getElementById("progress-fill").style.width = `${percent}%`;
+      }
+
+      function startSelectedSetup() {
+        if (selectedCategoryIndexes.length === 0) {
+          return;
+        }
+
+        onboardingQueue = [...selectedCategoryIndexes];
+        queuePosition = 0;
+        completedSelections = [];
+        beginCategory(onboardingQueue[queuePosition]);
+      }
+
+      function beginCategory(index) {
+        categoryIndex = index;
+        step = "genres";
+        selectedGenres = [];
+        selectedSuggestions = [];
+        selectedPreferences = [];
+        document.getElementById("category-step").hidden = true;
+        document.getElementById("flow-step").hidden = false;
+        renderFlow();
       }
 
       function renderFlow() {
@@ -836,7 +917,7 @@
         let description = "Suggestions are hidden until you select at least one genre.";
         let list = category.genres;
         let selected = selectedGenres;
-        const categoryProgress = categoryIndex / categories.length;
+        const categoryProgress = queuePosition / Math.max(onboardingQueue.length, 1);
         const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.45 : step === "preferences" ? 0.7 : 0.95;
         let progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
 
@@ -858,7 +939,10 @@
 
         if (step === "summary") {
           title = `${category.name} summary`;
-          description = "This category is ready. Open your dashboard or go back to add more.";
+          const remaining = onboardingQueue.length - queuePosition - 1;
+          description = remaining > 0
+            ? `This category is ready. Save it and continue with ${remaining} more selected ${remaining === 1 ? "category" : "categories"}.`
+            : "This is the last selected category. Saving it will open your filtered dashboard.";
           list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences];
           selected = list;
           progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
@@ -881,7 +965,9 @@
           options.appendChild(button);
         });
 
-        document.getElementById("flow-next").textContent = step === "summary" ? "Open Radar Dashboard" : "Continue";
+        document.getElementById("flow-next").textContent = step === "summary"
+          ? (queuePosition < onboardingQueue.length - 1 ? "Save and continue" : "Save and open filtered Radar")
+          : "Continue";
       }
 
       function toggleFlowItem(item) {
@@ -903,9 +989,101 @@
         } else if (step === "preferences") {
           step = "summary";
         } else {
-          showScreen("dashboard");
+          completeCurrentCategory();
+          return;
         }
         renderFlow();
+      }
+
+      function completeCurrentCategory() {
+        const category = categories[categoryIndex];
+        completedSelections.push({
+          category: category.name,
+          genres: [...selectedGenres],
+          suggestions: [...selectedSuggestions],
+          preferences: [...selectedPreferences],
+        });
+
+        if (queuePosition < onboardingQueue.length - 1) {
+          queuePosition += 1;
+          beginCategory(onboardingQueue[queuePosition]);
+          return;
+        }
+
+        renderDashboard();
+        showScreen("dashboard");
+      }
+
+      function actionForCategory(category) {
+        if (category === "Music" || category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return "View Tickets";
+        }
+
+        if (category === "Movies") {
+          return "View Showtimes";
+        }
+
+        if (category === "TV Shows" || category === "YouTubers / Creators") {
+          return "Watch";
+        }
+
+        if (category === "Podcasts") {
+          return "Listen";
+        }
+
+        if (category === "Video Games") {
+          return "Read Patch Notes";
+        }
+
+        if (category === "Products & Brands") {
+          return "View Product";
+        }
+
+        if (category === "Authors / Books") {
+          return "View Release";
+        }
+
+        return "View Update";
+      }
+
+      function renderDashboard() {
+        const selectedNames = completedSelections.map((selection) => selection.category);
+        const filteredBriefings = briefingData.filter((item) => selectedNames.includes(item.category));
+        const generatedBriefings = completedSelections.flatMap((selection) => {
+          const followedItems = [...selection.suggestions, ...selection.genres].slice(0, 3);
+          return followedItems.map((item) => ({
+            category: selection.category,
+            title: `${item} is now on your Radar`,
+            detail: `Radar will track ${selection.preferences.slice(0, 3).join(", ") || "updates"} for this selection.`,
+            action: actionForCategory(selection.category),
+          }));
+        });
+        const homeItems = [...filteredBriefings, ...generatedBriefings];
+
+        document.getElementById("update-count").textContent = homeItems.length;
+        document.getElementById("briefing-filter").textContent = selectedNames.length
+          ? `Filtered for ${selectedNames.join(", ")}.`
+          : "Your most important actionable updates in one place.";
+        document.getElementById("home-list").innerHTML = homeItems.map((item) => `
+          <article class="tracked">
+            <p class="eyebrow">${item.category}</p>
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            <button class="action">${item.action}</button>
+          </article>
+        `).join("");
+
+        document.getElementById("radar-list").innerHTML = completedSelections.map((selection) => {
+          const items = [...selection.suggestions, ...selection.genres].slice(0, 5);
+          return `
+            <article class="tracked">
+              <p class="eyebrow">${selection.category}</p>
+              <h3>${items.length ? items.join(", ") : selection.category}</h3>
+              <p>${selection.preferences.join(", ")}</p>
+              <span class="status">Following</span>
+            </article>
+          `;
+        }).join("");
       }
 
       function renderAlerts() {
@@ -938,8 +1116,10 @@
         document.getElementById("flow-step").hidden = true;
         document.getElementById("category-step").hidden = false;
         updateProgress(9);
+        renderCategories();
       });
 
+      document.getElementById("start-selected").addEventListener("click", startSelectedSetup);
       document.getElementById("flow-next").addEventListener("click", nextFlowStep);
 
       document.querySelectorAll("[data-tab]").forEach((button) => {
