@@ -1005,19 +1005,39 @@
           source: "Creator / venue feeds",
         },
       ];
+      const PREVIEW_STORAGE_KEY = "radar-preview-profile-v1";
+      const storedPreviewProfile = (() => {
+        try {
+          return JSON.parse(localStorage.getItem(PREVIEW_STORAGE_KEY) || "{}");
+        } catch {
+          return {};
+        }
+      })();
       let categoryIndex = 0;
       let step = "genres";
-      let selectedCategoryIndexes = [];
+      let selectedCategoryIndexes = storedPreviewProfile.selectedCategoryIndexes || [];
       let onboardingQueue = [];
       let queuePosition = 0;
-      let completedSelections = [];
-      let hasOpenedDashboard = false;
+      let completedSelections = storedPreviewProfile.completedSelections || [];
+      let hasOpenedDashboard = Boolean(storedPreviewProfile.hasOpenedDashboard);
       let selectedGenres = [];
       let selectedSuggestions = [];
       let selectedPreferences = [];
       let selectedRadius = "50 miles";
-      let selectedAlerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+      let selectedAlerts = storedPreviewProfile.selectedAlerts || ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+      let trackedStatuses = storedPreviewProfile.trackedStatuses || {};
       let sonarAudioContext = null;
+
+      function savePreviewProfile() {
+        localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify({
+          selectedCategoryIndexes,
+          completedSelections,
+          hasOpenedDashboard,
+          selectedAlerts,
+          trackedStatuses,
+          savedAt: new Date().toISOString(),
+        }));
+      }
 
       function showScreen(id) {
         screens.forEach((screen) => document.getElementById(screen).classList.toggle("active", screen === id));
@@ -1077,9 +1097,15 @@
             if (selectedCategoryIndexes.includes(index)) {
               selectedCategoryIndexes = selectedCategoryIndexes.filter((categoryNumber) => categoryNumber !== index);
               completedSelections = completedSelections.filter((selection) => selection.category !== category.name);
+              Object.keys(trackedStatuses).forEach((key) => {
+                if (key.startsWith(`${category.name}:`.toLowerCase())) {
+                  delete trackedStatuses[key];
+                }
+              });
             } else {
               selectedCategoryIndexes = [...selectedCategoryIndexes, index];
             }
+            savePreviewProfile();
             renderCategories();
           });
           container.appendChild(button);
@@ -1089,6 +1115,22 @@
       function updateProgress(percent) {
         document.getElementById("progress-label").textContent = `${percent}%`;
         document.getElementById("progress-fill").style.width = `${percent}%`;
+      }
+
+      function interestKey(category, item) {
+        return `${category}:${item}`.toLowerCase();
+      }
+
+      function statusLabel(status) {
+        if (status === "watchlist") {
+          return "Watchlist";
+        }
+
+        if (status === "paused") {
+          return "Paused";
+        }
+
+        return "Following";
       }
 
       function startSelectedSetup() {
@@ -1258,6 +1300,7 @@
         renderDashboard();
         showScreen("dashboard");
         hasOpenedDashboard = true;
+        savePreviewProfile();
       }
 
       function actionForCategory(category) {
@@ -1411,6 +1454,7 @@
 
       function renderDashboard() {
         hasOpenedDashboard = true;
+        savePreviewProfile();
         const selectedNames = completedSelections.map((selection) => selection.category);
         const selectedInterestNames = new Set(
           completedSelections
@@ -1452,15 +1496,25 @@
           </article>
         `;
 
-        document.getElementById("radar-list").innerHTML = completedSelections.length ? completedSelections.map((selection) => {
-          const items = [...selection.suggestions, ...selection.genres].slice(0, 5);
+        const radarItems = completedSelections.flatMap((selection) =>
+          [...selection.suggestions, ...selection.genres].slice(0, 5).map((item) => ({ selection, item }))
+        );
+        document.getElementById("radar-list").innerHTML = radarItems.length ? radarItems.map(({ selection, item }) => {
+          const key = interestKey(selection.category, item);
+          const status = trackedStatuses[key] || "following";
           return `
             <article class="tracked">
               <p class="eyebrow">${selection.category}</p>
-              <h3>${items.length ? items.join(", ") : selection.category}</h3>
+              <h3>${item}</h3>
               <p>${selection.preferences.join(", ")}</p>
               ${selection.radius ? `<p>Nearby radius: ${selection.radius}</p>` : ""}
-              <span class="status">Following</span>
+              <span class="status">${statusLabel(status)}</span>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem;">
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="following">Following</button>
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="watchlist">Watchlist</button>
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="paused">Pause</button>
+                <button class="action" type="button" data-remove-key="${encodeURIComponent(key)}">Remove</button>
+              </div>
             </article>
           `;
         }).join("") : `
@@ -1469,6 +1523,29 @@
             <p>Use Manage selected radars to add categories and interests.</p>
           </article>
         `;
+        document.querySelectorAll("[data-status-key]").forEach((button) => {
+          button.addEventListener("click", () => {
+            trackedStatuses[decodeURIComponent(button.dataset.statusKey)] = button.dataset.statusValue;
+            savePreviewProfile();
+            renderDashboard();
+          });
+        });
+        document.querySelectorAll("[data-remove-key]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const [category, item] = decodeURIComponent(button.dataset.removeKey).split(":");
+            completedSelections = completedSelections.map((selection) => selection.category.toLowerCase() === category
+              ? {
+                ...selection,
+                suggestions: selection.suggestions.filter((value) => value.toLowerCase() !== item),
+                genres: selection.genres.filter((value) => value.toLowerCase() !== item),
+              }
+              : selection
+            );
+            delete trackedStatuses[decodeURIComponent(button.dataset.removeKey)];
+            savePreviewProfile();
+            renderDashboard();
+          });
+        });
 
         const recommendations = recommendationData.filter((item) =>
           item.requiresAny.some((requiredItem) => selectedInterestNames.has(requiredItem.toLowerCase()))
@@ -1537,6 +1614,7 @@
             button.addEventListener("click", () => {
               selectedAlerts = selectedAlerts.includes(alert) ? selectedAlerts.filter((item) => item !== alert) : [...selectedAlerts, alert];
               document.getElementById("selected-count").textContent = selectedAlerts.length;
+              savePreviewProfile();
               renderAlerts();
             });
             grid.appendChild(button);
@@ -1576,6 +1654,7 @@
         renderDashboard();
         showScreen("dashboard");
         hasOpenedDashboard = true;
+        savePreviewProfile();
       });
       document.getElementById("manage-radars").addEventListener("click", () => {
         document.getElementById("flow-step").hidden = true;
@@ -1596,6 +1675,10 @@
 
       renderCategories();
       renderAlerts();
+      if (hasOpenedDashboard) {
+        renderDashboard();
+        showScreen("dashboard");
+      }
     </script>
   </body>
 </html>

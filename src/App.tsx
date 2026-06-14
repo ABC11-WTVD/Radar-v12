@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import {
   AlertTriangle,
@@ -69,6 +69,16 @@ type TrackedItem = {
 };
 
 type BriefingItem = RadarSignal;
+type PersistedRadarProfile = {
+  accountMode?: AccountMode;
+  completedCategoryIds?: string[];
+  hasOpenedDashboard?: boolean;
+  selectedAlerts?: string[];
+  selectedCategoryIds?: string[];
+  selections?: Record<string, CategorySelection>;
+  trackedItems?: TrackedItem[];
+  savedAt?: string;
+};
 
 const STORAGE_KEY = 'radar-local-profile-v1';
 const radii = ['25', '50', '100', '250', '500'];
@@ -490,18 +500,50 @@ const defaultSelection = (): CategorySelection => ({
 
 const unique = (items: string[]) => Array.from(new Set(items));
 
+function readStoredRadarProfile(): PersistedRadarProfile {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const storedProfile = window.localStorage.getItem(STORAGE_KEY);
+    return storedProfile ? JSON.parse(storedProfile) as PersistedRadarProfile : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredRadarProfile(profile: PersistedRadarProfile) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...profile,
+        savedAt: new Date().toISOString(),
+      }),
+    );
+  } catch {
+    // Local mode remains usable even when browser storage is unavailable.
+  }
+}
+
 function App() {
-  const [screen, setScreen] = useState<AppScreen>('splash');
+  const storedProfile = useMemo(() => readStoredRadarProfile(), []);
+  const [screen, setScreen] = useState<AppScreen>(storedProfile.hasOpenedDashboard ? 'dashboard' : 'splash');
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('home');
-  const [accountMode, setAccountMode] = useState<AccountMode>('local');
+  const [accountMode, setAccountMode] = useState<AccountMode>(storedProfile.accountMode ?? 'local');
   const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('category');
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [completedCategoryIds, setCompletedCategoryIds] = useState<string[]>([]);
-  const [hasOpenedDashboard, setHasOpenedDashboard] = useState(false);
-  const [selections, setSelections] = useState<Record<string, CategorySelection>>({});
-  const [selectedAlerts, setSelectedAlerts] = useState<string[]>(['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
-  const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(storedProfile.selectedCategoryIds ?? []);
+  const [completedCategoryIds, setCompletedCategoryIds] = useState<string[]>(storedProfile.completedCategoryIds ?? []);
+  const [hasOpenedDashboard, setHasOpenedDashboard] = useState(Boolean(storedProfile.hasOpenedDashboard));
+  const [selections, setSelections] = useState<Record<string, CategorySelection>>(storedProfile.selections ?? {});
+  const [selectedAlerts, setSelectedAlerts] = useState<string[]>(storedProfile.selectedAlerts ?? ['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
+  const [trackedItems, setTrackedItems] = useState<TrackedItem[]>(storedProfile.trackedItems ?? []);
   const [authMessage, setAuthMessage] = useState('');
 
   const activeCategory = activeCategoryIndex === null ? null : categories[activeCategoryIndex];
@@ -568,6 +610,18 @@ function App() {
       return groups;
     }, {});
   }, [visibleTrackedItems]);
+
+  useEffect(() => {
+    writeStoredRadarProfile({
+      accountMode,
+      completedCategoryIds,
+      hasOpenedDashboard,
+      selectedAlerts,
+      selectedCategoryIds,
+      selections,
+      trackedItems,
+    });
+  }, [accountMode, completedCategoryIds, hasOpenedDashboard, selectedAlerts, selectedCategoryIds, selections, trackedItems]);
 
   const updateSelection = (categoryId: string, updater: (current: CategorySelection) => CategorySelection) => {
     setSelections((current) => ({
@@ -751,21 +805,7 @@ function App() {
       setTrackedItems((current) => uniqueTrackedItems([...selectedItems, ...current]));
     }
 
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          accountMode,
-          completedCategoryIds: completedIds,
-          selectedCategoryIds,
-          selections,
-          savedAt: new Date().toISOString(),
-        }),
-      );
-    } catch {
-      // Local mode still works if browser storage is unavailable.
-    }
-
+    setCompletedCategoryIds(completedIds);
     setScreen('dashboard');
     setDashboardTab('home');
     setHasOpenedDashboard(true);
