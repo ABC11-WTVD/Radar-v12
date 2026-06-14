@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar Preview | Never Miss What Matters</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08131f;
+        --panel: #102235;
+        --card: #17324b;
+        --radar-green: #2dff87;
+        --notification-green: #42ffaa;
+        --warning: #ffb547;
+        --alert: #ff5c5c;
+        --text: #eaf7ff;
+        --muted: #9fc4d9;
+        --line: rgba(234, 247, 255, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(45, 255, 135, 0.16), transparent 22rem),
+          linear-gradient(180deg, #08131f 0%, #091827 100%);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .app {
+        min-height: 100dvh;
+        background:
+          linear-gradient(rgba(45, 255, 135, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(45, 255, 135, 0.025) 1px, transparent 1px);
+        background-size: 26px 26px;
+      }
+
+      .screen {
+        display: none;
+        width: min(100%, 520px);
+        min-height: 100dvh;
+        margin: 0 auto;
+        padding: 1.25rem;
+      }
+
+      .screen.active {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .splash.active {
+        height: 100dvh;
+        justify-content: space-between;
+        overflow: hidden;
+        text-align: center;
+      }
+
+      .eyebrow {
+        margin-bottom: 0.55rem;
+        color: var(--notification-green);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .title {
+        margin-bottom: 0.75rem;
+        font-size: clamp(2.3rem, 12vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+      }
+
+      .card,
+      .choice,
+      .briefing,
+      .tracked,
+      .setting {
+        border: 1px solid var(--line);
+        border-radius: 1.35rem;
+        background: rgba(16, 34, 53, 0.88);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+      }
+
+      .radar-orbit {
+        position: relative;
+        width: min(78vw, 330px);
+        aspect-ratio: 1;
+        margin: 4vh auto 0;
+        border: 1px solid rgba(45, 255, 135, 0.3);
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, rgba(45, 255, 135, 0.3) 0 2px, transparent 3px),
+          repeating-radial-gradient(circle, rgba(45, 255, 135, 0.16) 0 1px, transparent 1px 54px);
+        box-shadow:
+          inset 0 0 40px rgba(45, 255, 135, 0.12),
+          0 0 32px rgba(45, 255, 135, 0.22);
+      }
+
+      .radar-orbit::before,
+      .radar-orbit::after {
+        position: absolute;
+        inset: 50% auto auto 0;
+        width: 100%;
+        height: 1px;
+        background: rgba(45, 255, 135, 0.22);
+        content: "";
+      }
+
+      .radar-orbit::after {
+        transform: rotate(90deg);
+      }
+
+      .sweep {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: conic-gradient(from 12deg, rgba(45, 255, 135, 0.45), rgba(45, 255, 135, 0.08), transparent 30%);
+        animation: sweep 7s linear infinite;
+        mask: radial-gradient(circle, transparent 0 8%, #000 9%);
+      }
+
+      .dot {
+        position: absolute;
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 999px;
+        background: var(--notification-green);
+        box-shadow: 0 0 18px rgba(66, 255, 170, 0.85);
+      }
+
+      .dot.one {
+        top: 28%;
+        left: 61%;
+      }
+
+      .dot.two {
+        top: 59%;
+        left: 31%;
+      }
+
+      .dot.three {
+        top: 67%;
+        left: 72%;
+        background: var(--warning);
+      }
+
+      @keyframes sweep {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .logo {
+        display: grid;
+        width: 5.25rem;
+        height: 5.25rem;
+        place-items: center;
+        margin: -2.5rem auto 1rem;
+        border: 1px solid rgba(45, 255, 135, 0.35);
+        border-radius: 1.7rem;
+        background: rgba(16, 34, 53, 0.78);
+        box-shadow: 0 0 32px rgba(45, 255, 135, 0.22);
+        color: var(--radar-green);
+        font-size: 2.2rem;
+      }
+
+      .primary,
+      .secondary,
+      .ghost,
+      .action,
+      .pill,
+      .nav button {
+        min-height: 3rem;
+        border-radius: 1rem;
+        font-weight: 900;
+      }
+
+      .primary {
+        width: 100%;
+        padding: 0.9rem 1rem;
+        background: linear-gradient(135deg, var(--radar-green), var(--notification-green));
+        color: #03110b;
+      }
+
+      .secondary,
+      .ghost {
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(66, 255, 170, 0.35);
+        background: rgba(66, 255, 170, 0.1);
+        color: var(--text);
+      }
+
+      .ghost {
+        width: fit-content;
+        border-color: var(--line);
+        background: rgba(234, 247, 255, 0.07);
+      }
+
+      .choices,
+      .list,
+      .grid,
+      .stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .choice {
+        display: grid;
+        gap: 0.45rem;
+        width: 100%;
+        padding: 1rem;
+        text-align: left;
+        color: var(--text);
+      }
+
+      .choice strong {
+        font-size: 1.05rem;
+      }
+
+      .form {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+      }
+
+      .form label {
+        display: grid;
+        gap: 0.45rem;
+        font-weight: 900;
+      }
+
+      .form input {
+        min-height: 3rem;
+        border: 1px solid var(--line);
+        border-radius: 0.95rem;
+        background: rgba(8, 19, 31, 0.78);
+        color: var(--text);
+        padding: 0.8rem;
+      }
+
+      .progress {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 0.6rem 0;
+        background: linear-gradient(180deg, var(--bg) 70%, rgba(8, 19, 31, 0));
+      }
+
+      .progress span {
+        display: block;
+        margin-bottom: 0.4rem;
+        color: var(--notification-green);
+        font-size: 0.8rem;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .track {
+        height: 0.55rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(234, 247, 255, 0.1);
+      }
+
+      .fill {
+        height: 100%;
+        width: 9%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--radar-green), var(--notification-green));
+      }
+
+      .card {
+        padding: 1rem;
+      }
+
+      .pill-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 1rem;
+      }
+
+      .pill {
+        padding: 0.68rem 0.86rem;
+        border: 1px solid rgba(234, 247, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(234, 247, 255, 0.08);
+        color: var(--text);
+      }
+
+      .pill.selected {
+        border-color: rgba(45, 255, 135, 0.88);
+        background: rgba(45, 255, 135, 0.2);
+        color: var(--notification-green);
+      }
+
+      .dashboard {
+        padding-bottom: 5.5rem;
+      }
+
+      .dashboard.active {
+        display: block;
+      }
+
+      .tab {
+        display: none;
+        width: min(100%, 560px);
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .tab.active {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .dash-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .badge {
+        padding: 0.55rem 0.75rem;
+        border: 1px solid rgba(45, 255, 135, 0.28);
+        border-radius: 999px;
+        background: rgba(45, 255, 135, 0.1);
+        color: var(--notification-green);
+        font-size: 0.8rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .briefing,
+      .tracked,
+      .setting {
+        padding: 0.9rem;
+      }
+
+      .briefing h3,
+      .tracked h3 {
+        margin-bottom: 0.35rem;
+      }
+
+      .action {
+        width: fit-content;
+        min-height: 2.4rem;
+        padding: 0.6rem 0.75rem;
+        background: rgba(45, 255, 135, 0.14);
+        color: var(--notification-green);
+      }
+
+      .nav {
+        position: fixed;
+        right: 0.8rem;
+        bottom: 0.8rem;
+        left: 0.8rem;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.35rem;
+        width: min(calc(100% - 1.6rem), 560px);
+        margin: 0 auto;
+        padding: 0.45rem;
+        border: 1px solid var(--line);
+        border-radius: 1.35rem;
+        background: rgba(10, 25, 40, 0.94);
+      }
+
+      .nav button {
+        min-height: 3.45rem;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+
+      .nav button.active {
+        background: rgba(45, 255, 135, 0.14);
+        color: var(--notification-green);
+      }
+
+      .status {
+        width: fit-content;
+        padding: 0.34rem 0.58rem;
+        border-radius: 999px;
+        background: rgba(45, 255, 135, 0.16);
+        color: var(--notification-green);
+        font-size: 0.76rem;
+        font-weight: 900;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="screen splash active" id="splash">
+        <div class="radar-orbit" aria-hidden="true">
+          <div class="sweep"></div>
+          <div class="dot one"></div>
+          <div class="dot two"></div>
+          <div class="dot three"></div>
+        </div>
+
+        <div>
+          <div class="logo">R</div>
+          <p class="eyebrow">Personal intelligence dashboard</p>
+          <h1 class="title">Radar</h1>
+          <p>Never Miss What Matters.</p>
+        </div>
+
+        <button class="primary" type="button" data-screen="account">Get Started</button>
+      </section>
+
+      <section class="screen" id="account">
+        <header>
+          <p class="eyebrow">Choose how Radar works for you</p>
+          <h1 class="title">Set up your Radar</h1>
+          <p>Use Radar locally on this device or create an account for syncing, cloud backup, family profiles, and shared interests.</p>
+        </header>
+
+        <div class="choices">
+          <button class="choice" type="button" data-screen="signin">
+            <strong>Sign In / Create Account</strong>
+            <span>Sync across devices and prepare for shared profiles.</span>
+          </button>
+          <button class="choice" type="button" data-screen="onboarding">
+            <strong>Continue Without Account</strong>
+            <span>Store data on this device, work offline, and set up interests now.</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="screen" id="signin">
+        <button class="ghost" type="button" data-screen="account">Back</button>
+        <header>
+          <p class="eyebrow">Account mode</p>
+          <h1 class="title">Sign in or create your Radar account</h1>
+          <p>Account sync is ready for future backend integration.</p>
+        </header>
+
+        <form class="form card" id="signin-form">
+          <label>Email<input type="email" placeholder="you@example.com" required /></label>
+          <label>Password<input type="password" placeholder="Enter your password" required /></label>
+          <button class="primary" type="submit">Sign In</button>
+          <button class="secondary" type="submit">Create Account</button>
+          <button class="ghost" type="button">Forgot Password</button>
+        </form>
+      </section>
+
+      <section class="screen" id="onboarding">
+        <div class="progress">
+          <span id="progress-label">9%</span>
+          <div class="track"><div class="fill" id="progress-fill"></div></div>
+        </div>
+
+        <div id="category-step">
+          <p class="eyebrow">Local mode active</p>
+          <h1 class="title">Build your first Radar</h1>
+          <p>Complete one category at a time. Start with what matters most and add more later.</p>
+          <div class="list" id="categories"></div>
+        </div>
+
+        <div class="card" id="flow-step" hidden>
+          <button class="ghost" type="button" id="back-to-categories">Back</button>
+          <p class="eyebrow" id="flow-category">Music</p>
+          <h2 id="flow-title">Select genres</h2>
+          <p id="flow-description">Select genres before artist suggestions appear.</p>
+          <div class="pill-grid" id="flow-options"></div>
+          <button class="primary" type="button" id="flow-next">Continue</button>
+        </div>
+      </section>
+
+      <section class="screen dashboard" id="dashboard">
+        <div class="tab active" id="tab-home">
+          <header class="dash-head">
+            <div>
+              <p class="eyebrow">Since yesterday</p>
+              <h1 class="title">Radar Briefing</h1>
+            </div>
+            <span class="badge">4 updates</span>
+          </header>
+
+          <article class="briefing">
+            <h2>Daily Briefing</h2>
+            <p>Your most important actionable updates in one place.</p>
+            <div class="stack">
+              <article class="tracked">
+                <h3>Metallica announced a Chicago show</h3>
+                <p>Presale opens tomorrow at 10:00 AM.</p>
+                <button class="action">Buy Tickets</button>
+              </article>
+              <article class="tracked">
+                <h3>Nate Bargatze appeared on SmartLess</h3>
+                <p>New interview available on Spotify, YouTube, and Apple Podcasts.</p>
+                <button class="action">Listen</button>
+              </article>
+              <article class="tracked">
+                <h3>Fantastic Four tickets are available</h3>
+                <p>Nearby theaters added opening weekend showtimes.</p>
+                <button class="action">View Showtimes</button>
+              </article>
+              <article class="tracked">
+                <h3>Fortnite patch released</h3>
+                <p>Balance changes, new event quests, and outage notes are live.</p>
+                <button class="action">Read Patch Notes</button>
+              </article>
+            </div>
+          </article>
+        </div>
+
+        <div class="tab" id="tab-radar">
+          <p class="eyebrow">Everything you follow</p>
+          <h1 class="title">Your Radar</h1>
+          <article class="tracked"><h3>Tool</h3><span class="status">Following</span></article>
+          <article class="tracked"><h3>Pantera</h3><span class="status">Following</span></article>
+          <article class="tracked"><h3>Gojira</h3><span class="status">Watchlist</span></article>
+        </div>
+
+        <div class="tab" id="tab-discover">
+          <p class="eyebrow">Recommendations</p>
+          <h1 class="title">Discover</h1>
+          <article class="tracked">
+            <h3>Because you follow Tool and Pantera</h3>
+            <p>Radar suggests Gojira, Mastodon, and Lamb of God with a progressive metal rationale.</p>
+            <button class="action">Add to Radar</button>
+          </article>
+        </div>
+
+        <div class="tab" id="tab-alerts">
+          <p class="eyebrow">Today, week, month, category, priority</p>
+          <h1 class="title">Alerts</h1>
+          <article class="card">
+            <h2><span id="selected-count">5</span> Selected</h2>
+            <div class="pill-grid" id="alert-options"></div>
+          </article>
+        </div>
+
+        <div class="tab" id="tab-settings">
+          <p class="eyebrow">Controls and integrations</p>
+          <h1 class="title">Settings</h1>
+          <div class="grid">
+            <button class="setting">Immediate</button>
+            <button class="setting">Daily Digest</button>
+            <button class="setting">Weekly Digest</button>
+            <button class="setting">Spotify</button>
+            <button class="setting">YouTube</button>
+            <button class="setting">Steam</button>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Main navigation">
+          <button class="active" type="button" data-tab="home">Home</button>
+          <button type="button" data-tab="radar">Radar</button>
+          <button type="button" data-tab="discover">Discover</button>
+          <button type="button" data-tab="alerts">Alerts</button>
+          <button type="button" data-tab="settings">Settings</button>
+        </nav>
+      </section>
+    </main>
+
+    <script>
+      const screens = ["splash", "account", "signin", "onboarding", "dashboard"];
+      const categories = [
+        {
+          name: "Music",
+          genres: ["Rock", "Hard Rock", "Metal", "Thrash Metal", "Alternative", "Country", "Blues", "Jazz", "EDM", "Rap", "Indie"],
+          suggestions: {
+            Metal: ["Metallica", "Tool", "Pantera", "Megadeth", "Gojira", "Lamb of God", "Iron Maiden"],
+            "Thrash Metal": ["Metallica", "Megadeth", "Slayer", "Anthrax", "Testament"],
+            Rock: ["Foo Fighters", "Pearl Jam", "The Black Keys", "Greta Van Fleet"],
+            Alternative: ["Radiohead", "Muse", "The Killers", "Cage the Elephant"],
+            Country: ["Chris Stapleton", "Zach Bryan", "Lainey Wilson", "Luke Combs"],
+          },
+          preferences: ["Concerts", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Interviews"],
+        },
+        {
+          name: "Podcasts",
+          genres: ["Comedy", "Technology", "History", "Business", "Science", "Sports", "Gaming", "True Crime"],
+          suggestions: {
+            Comedy: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend"],
+            Technology: ["Waveform", "Decoder", "Hard Fork"],
+            History: ["Hardcore History", "The Rest Is History"],
+          },
+          preferences: ["New episodes", "Guest appearances", "Live events", "Video versions", "Special releases"],
+        },
+        {
+          name: "Video Games",
+          genres: ["RPG", "FPS", "MMO", "Strategy", "Sports", "Simulation", "Survival", "Action"],
+          suggestions: {
+            RPG: ["Elden Ring", "Final Fantasy", "Baldurs Gate 3"],
+            FPS: ["Call of Duty", "Halo", "Valorant", "Apex Legends"],
+            Action: ["Fortnite", "Helldivers 2", "Grand Theft Auto"],
+          },
+          preferences: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages"],
+        },
+      ];
+      const alerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      let categoryIndex = 0;
+      let step = "genres";
+      let selectedGenres = [];
+      let selectedSuggestions = [];
+      let selectedPreferences = [];
+      let selectedAlerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+
+      function showScreen(id) {
+        screens.forEach((screen) => document.getElementById(screen).classList.toggle("active", screen === id));
+      }
+
+      function renderCategories() {
+        const container = document.getElementById("categories");
+        container.innerHTML = "";
+        categories.forEach((category, index) => {
+          const button = document.createElement("button");
+          button.className = "choice";
+          button.type = "button";
+          button.innerHTML = `<strong>${category.name}</strong><span>Complete this category before moving to another.</span>`;
+          button.addEventListener("click", () => {
+            categoryIndex = index;
+            step = "genres";
+            selectedGenres = [];
+            selectedSuggestions = [];
+            selectedPreferences = [];
+            document.getElementById("category-step").hidden = true;
+            document.getElementById("flow-step").hidden = false;
+            renderFlow();
+          });
+          container.appendChild(button);
+        });
+      }
+
+      function updateProgress(percent) {
+        document.getElementById("progress-label").textContent = `${percent}%`;
+        document.getElementById("progress-fill").style.width = `${percent}%`;
+      }
+
+      function renderFlow() {
+        const category = categories[categoryIndex];
+        const options = document.getElementById("flow-options");
+        options.innerHTML = "";
+        document.getElementById("flow-category").textContent = category.name;
+
+        let title = "Select genres";
+        let description = "Suggestions are hidden until you select at least one genre.";
+        let list = category.genres;
+        let selected = selectedGenres;
+        let progress = 18 + categoryIndex * 18;
+
+        if (step === "suggestions") {
+          title = "Generated suggestions";
+          description = "These are generated only from selected genres.";
+          list = [...new Set(selectedGenres.flatMap((genre) => category.suggestions[genre] || []))];
+          selected = selectedSuggestions;
+          progress += 9;
+        }
+
+        if (step === "preferences") {
+          title = "What should Radar track?";
+          description = "Choose actionable notification types.";
+          list = category.preferences;
+          selected = selectedPreferences;
+          progress += 18;
+        }
+
+        if (step === "summary") {
+          title = `${category.name} summary`;
+          description = "This category is ready. Open your dashboard or go back to add more.";
+          list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences];
+          selected = list;
+          progress += 27;
+        }
+
+        document.getElementById("flow-title").textContent = title;
+        document.getElementById("flow-description").textContent = description;
+        updateProgress(Math.min(progress, 94));
+
+        if (list.length === 0) {
+          options.innerHTML = `<p>No suggestions are shown until a genre is selected.</p>`;
+        }
+
+        list.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = `pill ${selected.includes(item) ? "selected" : ""}`;
+          button.type = "button";
+          button.textContent = item;
+          button.addEventListener("click", () => toggleFlowItem(item));
+          options.appendChild(button);
+        });
+
+        document.getElementById("flow-next").textContent = step === "summary" ? "Open Radar Dashboard" : "Continue";
+      }
+
+      function toggleFlowItem(item) {
+        const bucket = step === "genres" ? selectedGenres : step === "suggestions" ? selectedSuggestions : selectedPreferences;
+        const index = bucket.indexOf(item);
+        if (index >= 0) {
+          bucket.splice(index, 1);
+        } else {
+          bucket.push(item);
+        }
+        renderFlow();
+      }
+
+      function nextFlowStep() {
+        if (step === "genres") {
+          step = "suggestions";
+        } else if (step === "suggestions") {
+          step = "preferences";
+        } else if (step === "preferences") {
+          step = "summary";
+        } else {
+          showScreen("dashboard");
+        }
+        renderFlow();
+      }
+
+      function renderAlerts() {
+        const container = document.getElementById("alert-options");
+        container.innerHTML = "";
+        alerts.forEach((alert) => {
+          const button = document.createElement("button");
+          button.className = `pill ${selectedAlerts.includes(alert) ? "selected" : ""}`;
+          button.type = "button";
+          button.textContent = alert;
+          button.addEventListener("click", () => {
+            selectedAlerts = selectedAlerts.includes(alert) ? selectedAlerts.filter((item) => item !== alert) : [...selectedAlerts, alert];
+            document.getElementById("selected-count").textContent = selectedAlerts.length;
+            renderAlerts();
+          });
+          container.appendChild(button);
+        });
+      }
+
+      document.querySelectorAll("[data-screen]").forEach((button) => {
+        button.addEventListener("click", () => showScreen(button.dataset.screen));
+      });
+
+      document.getElementById("signin-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        showScreen("onboarding");
+      });
+
+      document.getElementById("back-to-categories").addEventListener("click", () => {
+        document.getElementById("flow-step").hidden = true;
+        document.getElementById("category-step").hidden = false;
+        updateProgress(9);
+      });
+
+      document.getElementById("flow-next").addEventListener("click", nextFlowStep);
+
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-tab]").forEach((nav) => nav.classList.toggle("active", nav === button));
+          document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+          document.getElementById(`tab-${button.dataset.tab}`).classList.add("active");
+        });
+      });
+
+      renderCategories();
+      renderAlerts();
+    </script>
+  </body>
+</html>
