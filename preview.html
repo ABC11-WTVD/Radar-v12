@@ -411,11 +411,16 @@
       }
 
       .action {
+        display: inline-flex;
+        align-items: center;
         width: fit-content;
         min-height: 2.4rem;
         padding: 0.6rem 0.75rem;
+        border-radius: 1rem;
         background: rgba(45, 255, 135, 0.14);
         color: var(--notification-green);
+        font-weight: 900;
+        text-decoration: none;
       }
 
       .nav {
@@ -1175,8 +1180,12 @@
       }
 
       function actionForCategory(category) {
+        if (category === "Podcasts") {
+          return "Find Latest Episode";
+        }
+
         if (category === "Music" || category === "Comedians" || category === "Sports" || category === "Local Events") {
-          return "View Tickets";
+          return category === "Music" ? "View Tour Dates" : "View Tickets";
         }
 
         if (category === "Movies") {
@@ -1206,6 +1215,119 @@
         return "View Update";
       }
 
+      function sourceForCategory(category) {
+        if (category === "Podcasts") {
+          return "Spotify / Apple Podcasts / YouTube";
+        }
+
+        if (category === "Music") {
+          return "Bandsintown / Ticketmaster";
+        }
+
+        if (category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return "Ticketmaster / Event providers";
+        }
+
+        if (category === "Movies") {
+          return "TMDB / Theater showtimes";
+        }
+
+        if (category === "Video Games") {
+          return "Steam / IGDB / Publisher feeds";
+        }
+
+        if (category === "Products & Brands") {
+          return "Retail and recall feeds";
+        }
+
+        if (category === "Authors / Books") {
+          return "Book release and event feeds";
+        }
+
+        if (category === "YouTubers / Creators") {
+          return "YouTube / Creator feeds";
+        }
+
+        return "Connected services";
+      }
+
+      function linkForCategory(category, item) {
+        const encodedItem = encodeURIComponent(item);
+
+        if (category === "Podcasts") {
+          return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item} latest episode guest`)}`;
+        }
+
+        if (category === "Music" || category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return `https://www.ticketmaster.com/search?q=${encodedItem}`;
+        }
+
+        if (category === "Movies") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} showtimes near me`)}`;
+        }
+
+        if (category === "TV Shows") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} streaming availability`)}`;
+        }
+
+        if (category === "Video Games") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} patch notes release date`)}`;
+        }
+
+        if (category === "Products & Brands") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} price restock availability`)}`;
+        }
+
+        if (category === "Authors / Books") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} book release signing`)}`;
+        }
+
+        if (category === "YouTubers / Creators") {
+          return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item} latest`)}`;
+        }
+
+        return `https://www.google.com/search?q=${encodedItem}`;
+      }
+
+      function integrationTitleForCategory(category, item) {
+        if (category === "Podcasts") {
+          return `${item}: latest episode monitoring`;
+        }
+
+        if (category === "Music") {
+          return `${item}: tour date monitoring`;
+        }
+
+        if (category === "Comedians") {
+          return `${item}: show date monitoring`;
+        }
+
+        if (category === "Movies") {
+          return `${item}: showtime and release monitoring`;
+        }
+
+        return `${item}: live data monitoring`;
+      }
+
+      function integrationDetailForCategory(selection, item) {
+        if (selection.category === "Podcasts") {
+          return "Radar will pull new episode drops, guest names, release timing, and links from podcast and video providers when connected.";
+        }
+
+        if (selection.category === "Music") {
+          return `Radar will check tour dates and ticket sources${selection.radius ? ` within ${selection.radius}` : ""} for this selected artist.`;
+        }
+
+        if (selection.category === "Comedians") {
+          return `Radar will check comedy show dates and ticket sources${selection.radius ? ` within ${selection.radius}` : ""} for this selected comedian.`;
+        }
+
+        const nearMeEnabled = selection.preferences.some((preference) => preference.toLowerCase().includes("near me"));
+        return nearMeEnabled && selection.radius
+          ? `Radar will watch for nearby in-person updates within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
+          : `Radar will check connected providers for ${selection.preferences.slice(0, 3).join(", ") || "updates"} tied to this selection.`;
+      }
+
       function renderDashboard() {
         hasOpenedDashboard = true;
         const selectedNames = completedSelections.map((selection) => selection.category);
@@ -1219,14 +1341,13 @@
         );
         const generatedBriefings = completedSelections.flatMap((selection) => {
           const followedItems = [...selection.suggestions, ...selection.genres].slice(0, 3);
-          const nearMeEnabled = selection.preferences.some((preference) => preference.toLowerCase().includes("near me"));
           return followedItems.map((item) => ({
             category: selection.category,
-            title: `${item} is now on your Radar`,
-            detail: nearMeEnabled && selection.radius
-              ? `Radar will watch for nearby in-person updates within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
-              : `Radar will track ${selection.preferences.slice(0, 3).join(", ") || "updates"} for this selection.`,
+            title: integrationTitleForCategory(selection.category, item),
+            detail: integrationDetailForCategory(selection, item),
             action: actionForCategory(selection.category),
+            href: linkForCategory(selection.category, item),
+            source: sourceForCategory(selection.category),
           }));
         });
         const homeItems = [...filteredBriefings, ...generatedBriefings];
@@ -1240,7 +1361,8 @@
             <p class="eyebrow">${item.category}</p>
             <h3>${item.title}</h3>
             <p>${item.detail}</p>
-            <button class="action">${item.action}</button>
+            ${item.source ? `<p class="eyebrow">Provider-ready: ${item.source}</p>` : ""}
+            ${item.href ? `<a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>` : `<button class="action">${item.action}</button>`}
           </article>
         `).join("") : `
           <article class="tracked">

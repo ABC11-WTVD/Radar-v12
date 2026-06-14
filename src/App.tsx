@@ -66,7 +66,10 @@ type BriefingItem = {
   detail: string;
   priority: 'high' | 'upcoming' | 'news' | 'recommendation';
   action: string;
+  href?: string;
   relatedItems?: string[];
+  source?: string;
+  sourceStatus?: string;
 };
 
 const STORAGE_KEY = 'radar-local-profile-v1';
@@ -1386,15 +1389,8 @@ function HomeTab({
   const selectedBriefingItems = briefingItems.filter((item) =>
     item.relatedItems?.some((relatedItem) => selectedNames.has(relatedItem.toLowerCase())),
   );
-  const generatedItems: BriefingItem[] = trackedItems.slice(0, 5).map((item) => ({
-    id: `personalized-${item.id}`,
-    category: item.category,
-    title: `${item.name} is on your Radar`,
-    detail: detailForTrackedItem(item),
-    priority: item.status === 'watchlist' ? 'recommendation' : 'news',
-    action: actionForCategory(item.category),
-  }));
-  const personalizedItems = uniqueBriefingItems([...selectedBriefingItems, ...generatedItems]);
+  const integrationItems = buildIntegrationUpdates(trackedItems);
+  const personalizedItems = uniqueBriefingItems([...selectedBriefingItems, ...integrationItems]);
   const highPriority = personalizedItems.filter((item) => item.priority === 'high');
   const upcoming = personalizedItems.filter((item) => item.priority === 'upcoming');
   const news = personalizedItems.filter((item) => item.priority === 'news');
@@ -1485,9 +1481,182 @@ function detailForTrackedItem(item: TrackedItem) {
   return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for the update types you selected during onboarding.`;
 }
 
+function buildIntegrationUpdates(trackedItems: TrackedItem[]): BriefingItem[] {
+  return trackedItems
+    .filter((item) => item.status !== 'paused')
+    .slice(0, 8)
+    .map((item) => {
+      const source = providerSourceForCategory(item.category);
+      const href = providerLinkForItem(item);
+      const priority = isInPersonCategory(item.category) ? 'upcoming' : 'news';
+
+      return {
+        id: `integration-${item.id}`,
+        category: item.category,
+        title: integrationTitleForItem(item),
+        detail: integrationDetailForItem(item),
+        priority,
+        action: actionForCategory(item.category),
+        href,
+        source,
+        sourceStatus: 'Provider-ready',
+      };
+    });
+}
+
+function integrationTitleForItem(item: TrackedItem) {
+  if (item.category === 'Podcasts') {
+    return `${item.name}: latest episode monitoring`;
+  }
+
+  if (item.category === 'Music') {
+    return `${item.name}: tour date monitoring`;
+  }
+
+  if (item.category === 'Comedians') {
+    return `${item.name}: show date monitoring`;
+  }
+
+  if (item.category === 'Movies') {
+    return `${item.name}: showtime and release monitoring`;
+  }
+
+  if (item.category === 'Video Games') {
+    return `${item.name}: release and update monitoring`;
+  }
+
+  return `${item.name}: live data monitoring`;
+}
+
+function integrationDetailForItem(item: TrackedItem) {
+  if (item.category === 'Podcasts') {
+    return 'Radar will pull new episode drops, guest names, release timing, and links from podcast and video providers when connected.';
+  }
+
+  if (item.category === 'Music') {
+    return `Radar will check tour dates and ticket sources${item.radius ? ` within ${item.radius} miles` : ''} for this selected artist.`;
+  }
+
+  if (item.category === 'Comedians') {
+    return `Radar will check comedy show dates and ticket sources${item.radius ? ` within ${item.radius} miles` : ''} for this selected comedian.`;
+  }
+
+  if (item.category === 'Movies') {
+    return `Radar will check showtimes, ticket links, trailers, and streaming windows${item.radius ? ` near you within ${item.radius} miles` : ''}.`;
+  }
+
+  if (item.category === 'Sports') {
+    return `Radar will check game schedules, ticket availability, and nearby events${item.radius ? ` within ${item.radius} miles` : ''}.`;
+  }
+
+  if (item.category === 'Local Events') {
+    return `Radar will check event calendars and ticket links${item.radius ? ` within ${item.radius} miles` : ''}.`;
+  }
+
+  if (item.category === 'Authors / Books') {
+    return `Radar will check releases, interviews, and signing events${item.radius ? ` within ${item.radius} miles` : ''}.`;
+  }
+
+  if (item.category === 'YouTubers / Creators') {
+    return `Radar will check uploads, live streams, product drops, and in-person creator events${item.radius ? ` within ${item.radius} miles` : ''}.`;
+  }
+
+  if (item.category === 'Products & Brands') {
+    return 'Radar will check product availability, price drops, restocks, recalls, and new versions from commerce providers.';
+  }
+
+  if (item.category === 'Video Games') {
+    return 'Radar will check release dates, DLC, patch notes, server outages, betas, and developer announcements.';
+  }
+
+  return 'Radar will check connected services for fresh updates tied to this selected interest.';
+}
+
+function providerSourceForCategory(category: string) {
+  if (category === 'Podcasts') {
+    return 'Spotify / Apple Podcasts / YouTube';
+  }
+
+  if (category === 'Music') {
+    return 'Bandsintown / Ticketmaster';
+  }
+
+  if (category === 'Comedians' || category === 'Sports' || category === 'Local Events') {
+    return 'Ticketmaster / Event providers';
+  }
+
+  if (category === 'Movies') {
+    return 'TMDB / Theater showtimes';
+  }
+
+  if (category === 'Video Games') {
+    return 'Steam / IGDB / Publisher feeds';
+  }
+
+  if (category === 'Products & Brands') {
+    return 'Retail and recall feeds';
+  }
+
+  if (category === 'Authors / Books') {
+    return 'Book release and event feeds';
+  }
+
+  if (category === 'YouTubers / Creators') {
+    return 'YouTube / Creator feeds';
+  }
+
+  return 'Connected services';
+}
+
+function providerLinkForItem(item: TrackedItem) {
+  const query = encodeURIComponent(item.name);
+
+  if (item.category === 'Podcasts') {
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item.name} latest episode guest`)}`;
+  }
+
+  if (item.category === 'Music' || item.category === 'Comedians' || item.category === 'Sports' || item.category === 'Local Events') {
+    return `https://www.ticketmaster.com/search?q=${query}`;
+  }
+
+  if (item.category === 'Movies') {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${item.name} showtimes near me`)}`;
+  }
+
+  if (item.category === 'TV Shows') {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${item.name} streaming availability`)}`;
+  }
+
+  if (item.category === 'Video Games') {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${item.name} patch notes release date`)}`;
+  }
+
+  if (item.category === 'Products & Brands') {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${item.name} price restock availability`)}`;
+  }
+
+  if (item.category === 'Authors / Books') {
+    return `https://www.google.com/search?q=${encodeURIComponent(`${item.name} book release signing`)}`;
+  }
+
+  if (item.category === 'YouTubers / Creators') {
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item.name} latest`)}`;
+  }
+
+  return `https://www.google.com/search?q=${query}`;
+}
+
+function isInPersonCategory(category: string) {
+  return ['Music', 'Movies', 'Podcasts', 'Sports', 'Local Events', 'Authors / Books', 'YouTubers / Creators', 'Comedians'].includes(category);
+}
+
 function actionForCategory(category: string) {
+  if (category === 'Podcasts') {
+    return 'Find Latest Episode';
+  }
+
   if (category === 'Music' || category === 'Comedians' || category === 'Sports' || category === 'Local Events') {
-    return 'View Tickets';
+    return category === 'Music' ? 'View Tour Dates' : 'View Tickets';
   }
 
   if (category === 'Movies') {
@@ -1537,21 +1706,34 @@ function NotificationCard({ compact = false, item }: { compact?: boolean; item: 
         <p className="notification-category">{item.category}</p>
         <h3>{item.title}</h3>
         <p>{item.detail}</p>
+        {item.source && (
+          <p className="source-line">
+            {item.sourceStatus ? `${item.sourceStatus}: ` : ''}
+            {item.source}
+          </p>
+        )}
       </div>
-      <button className="action-button" type="button">
-        {actionIcon(item.action)}
-        {item.action}
-      </button>
+      {item.href ? (
+        <a className="action-button" href={item.href} rel="noreferrer" target="_blank">
+          {actionIcon(item.action)}
+          {item.action}
+        </a>
+      ) : (
+        <button className="action-button" type="button">
+          {actionIcon(item.action)}
+          {item.action}
+        </button>
+      )}
     </article>
   );
 }
 
 function actionIcon(action: string) {
-  if (action.includes('Ticket') || action.includes('Showtimes')) {
+  if (action.includes('Ticket') || action.includes('Showtimes') || action.includes('Tour')) {
     return <Ticket size={15} aria-hidden="true" />;
   }
 
-  if (action.includes('Listen')) {
+  if (action.includes('Listen') || action.includes('Episode')) {
     return <Headphones size={15} aria-hidden="true" />;
   }
 
@@ -1734,6 +1916,8 @@ function AlertsTab({
   const relevantAlerts = briefingItems.filter((item) =>
     item.relatedItems?.some((relatedItem) => selectedNames.has(relatedItem.toLowerCase())),
   );
+  const integrationAlerts = buildIntegrationUpdates(trackedItems);
+  const actionableAlerts = uniqueBriefingItems([...relevantAlerts, ...integrationAlerts]);
 
   return (
     <div className="tab-panel">
@@ -1777,13 +1961,13 @@ function AlertsTab({
       </section>
 
       <DashboardSection title="Actionable alerts" icon={<SlidersHorizontal size={18} />}>
-        {relevantAlerts.length === 0 && (
+        {actionableAlerts.length === 0 && (
           <div className="recommendation-card">
             <strong>No actionable alerts yet</strong>
             <p>Alerts will appear only for the specific interests you selected.</p>
           </div>
         )}
-        {relevantAlerts.map((item) => (
+        {actionableAlerts.map((item) => (
           <NotificationCard compact item={item} key={`alert-${item.id}`} />
         ))}
       </DashboardSection>

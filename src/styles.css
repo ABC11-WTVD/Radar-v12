@@ -285,6 +285,14 @@ svg {
   padding: 0.65rem 0.78rem;
   background: rgba(45, 255, 135, 0.14);
   color: var(--notification-green);
+  text-decoration: none;
+}
+
+.source-line {
+  margin: 0.55rem 0 0;
+  color: var(--notification-green);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .primary-button:hover,
