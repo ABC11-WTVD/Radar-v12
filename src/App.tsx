@@ -64,6 +64,7 @@ type BriefingItem = {
   detail: string;
   priority: 'high' | 'upcoming' | 'news' | 'recommendation';
   action: string;
+  relatedItems?: string[];
 };
 
 const STORAGE_KEY = 'radar-local-profile-v1';
@@ -373,6 +374,7 @@ const briefingItems: BriefingItem[] = [
     detail: 'Presale opens tomorrow at 10:00 AM. Tickets are expected to move quickly.',
     priority: 'high',
     action: 'Buy Tickets',
+    relatedItems: ['Metallica'],
   },
   {
     id: 'nate-podcast',
@@ -381,6 +383,7 @@ const briefingItems: BriefingItem[] = [
     detail: 'A new interview episode is available on Spotify, YouTube, and Apple Podcasts.',
     priority: 'news',
     action: 'Listen',
+    relatedItems: ['Nate Bargatze'],
   },
   {
     id: 'fantastic-four',
@@ -389,6 +392,7 @@ const briefingItems: BriefingItem[] = [
     detail: 'Nearby theaters added evening showtimes for opening weekend.',
     priority: 'upcoming',
     action: 'View Showtimes',
+    relatedItems: ['Fantastic Four'],
   },
   {
     id: 'fortnite-patch',
@@ -397,24 +401,28 @@ const briefingItems: BriefingItem[] = [
     detail: 'Balance changes, new event quests, and outage notes are live.',
     priority: 'news',
     action: 'Read Patch Notes',
+    relatedItems: ['Fortnite'],
   },
 ];
 
 const recommendations = [
   {
     title: 'Gojira',
-    detail: 'Because you follow Tool and Pantera, Radar found a progressive metal overlap.',
+    detail: 'Radar found a progressive metal overlap with your selected artists.',
     action: 'Add to Radar',
+    requiresAny: ['Tool', 'Pantera'],
   },
   {
     title: 'Mastodon',
     detail: 'Similar heavy riffs, tour activity, and high match with your metal preferences.',
     action: 'Watch Quietly',
+    requiresAny: ['Tool', 'Pantera', 'Gojira', 'Lamb of God'],
   },
   {
     title: 'Lamb of God',
     detail: 'Recommended from your Metallica, Megadeth, and Pantera cluster.',
     action: 'Add to Radar',
+    requiresAny: ['Metallica', 'Megadeth', 'Pantera'],
   },
 ];
 
@@ -440,12 +448,7 @@ function App() {
   const [completedCategoryIds, setCompletedCategoryIds] = useState<string[]>([]);
   const [selections, setSelections] = useState<Record<string, CategorySelection>>({});
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>(['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
-  const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([
-    { id: 'seed-tool', category: 'Music', name: 'Tool', status: 'following' },
-    { id: 'seed-pantera', category: 'Music', name: 'Pantera', status: 'following' },
-    { id: 'seed-fortnite', category: 'Video Games', name: 'Fortnite', status: 'following' },
-    { id: 'seed-gojira', category: 'Music', name: 'Gojira', status: 'watchlist', rationale: 'Track quietly from your metal recommendations.' },
-  ]);
+  const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
   const [authMessage, setAuthMessage] = useState('');
 
   const activeCategory = activeCategoryIndex === null ? null : categories[activeCategoryIndex];
@@ -1219,7 +1222,12 @@ function DashboardScreen({
             onStatusChange={onTrackedStatusChange}
           />
         )}
-        {activeTab === 'discover' && <DiscoverTab onAddRecommendation={onAddRecommendation} />}
+        {activeTab === 'discover' && (
+          <DiscoverTab
+            trackedItems={trackedItems}
+            onAddRecommendation={onAddRecommendation}
+          />
+        )}
         {activeTab === 'alerts' && (
           <AlertsTab
             selectedAlerts={selectedAlerts}
@@ -1241,10 +1249,10 @@ function HomeTab({
   selectedCategoryNames: string[];
   trackedItems: TrackedItem[];
 }) {
-  const shouldFilter = selectedCategoryNames.length > 0;
-  const selectedBriefingItems = shouldFilter
-    ? briefingItems.filter((item) => selectedCategoryNames.includes(item.category))
-    : briefingItems;
+  const selectedNames = new Set(trackedItems.map((item) => item.name.toLowerCase()));
+  const selectedBriefingItems = briefingItems.filter((item) =>
+    item.relatedItems?.some((relatedItem) => selectedNames.has(relatedItem.toLowerCase())),
+  );
   const generatedItems: BriefingItem[] = trackedItems.slice(0, 5).map((item) => ({
     id: `personalized-${item.id}`,
     category: item.category,
@@ -1257,7 +1265,9 @@ function HomeTab({
   const highPriority = personalizedItems.filter((item) => item.priority === 'high');
   const upcoming = personalizedItems.filter((item) => item.priority === 'upcoming');
   const news = personalizedItems.filter((item) => item.priority === 'news');
-  const visibleRecommendations = !shouldFilter || selectedCategoryNames.includes('Music') ? recommendations : [];
+  const visibleRecommendations = recommendations.filter((item) =>
+    item.requiresAny.some((requiredItem) => selectedNames.has(requiredItem.toLowerCase())),
+  );
 
   return (
     <div className="tab-panel">
@@ -1275,11 +1285,17 @@ function HomeTab({
       <section className="briefing-card">
         <h2>Daily Briefing</h2>
         <p>
-          {shouldFilter
+          {selectedCategoryNames.length > 0
             ? `Filtered for ${selectedCategoryNames.join(', ')}.`
             : 'Your most important actionable updates in one place.'}
         </p>
         <div className="briefing-list">
+          {personalizedItems.length === 0 && (
+            <div className="recommendation-card">
+              <strong>No updates yet</strong>
+              <p>Radar will only show briefing items tied to the interests you selected during onboarding.</p>
+            </div>
+          )}
           {personalizedItems.map((item) => (
             <NotificationCard key={item.id} item={item} />
           ))}
@@ -1476,7 +1492,21 @@ function statusLabel(status: TrackStatus) {
   return 'Following';
 }
 
-function DiscoverTab({ onAddRecommendation }: { onAddRecommendation: (title: string, status: TrackStatus) => void }) {
+function DiscoverTab({
+  trackedItems,
+  onAddRecommendation,
+}: {
+  trackedItems: TrackedItem[];
+  onAddRecommendation: (title: string, status: TrackStatus) => void;
+}) {
+  const selectedNames = new Set(trackedItems.map((item) => item.name.toLowerCase()));
+  const visibleRecommendations = recommendations.filter((item) =>
+    item.requiresAny.some((requiredItem) => selectedNames.has(requiredItem.toLowerCase())),
+  );
+  const rationaleSource = recommendations
+    .flatMap((item) => item.requiresAny)
+    .filter((item, index, allItems) => selectedNames.has(item.toLowerCase()) && allItems.indexOf(item) === index);
+
   return (
     <div className="tab-panel">
       <ScreenHeader
@@ -1488,13 +1518,27 @@ function DiscoverTab({ onAddRecommendation }: { onAddRecommendation: (title: str
       <div className="because-card">
         <Sparkles aria-hidden="true" />
         <div>
-          <strong>Because you follow Tool and Pantera</strong>
-          <p>Radar found adjacent metal artists with tour activity and release signals.</p>
+          <strong>
+            {rationaleSource.length
+              ? `Because you follow ${rationaleSource.join(' and ')}`
+              : 'Recommendations will personalize as you follow interests'}
+          </strong>
+          <p>
+            {rationaleSource.length
+              ? 'Radar found adjacent interests with matching activity and release signals.'
+              : 'Discover stays empty until Radar has a specific selected interest to compare against.'}
+          </p>
         </div>
       </div>
 
       <div className="recommendation-stack">
-        {recommendations.map((item) => (
+        {visibleRecommendations.length === 0 && (
+          <article className="recommendation-card large">
+            <strong>No recommendations yet</strong>
+            <p>Select specific artists, games, shows, products, creators, or events during onboarding to generate relevant recommendations.</p>
+          </article>
+        )}
+        {visibleRecommendations.map((item) => (
           <article className="recommendation-card large" key={item.title}>
             <strong>{item.title}</strong>
             <p>{item.detail}</p>
@@ -1531,6 +1575,11 @@ function AlertsTab({
   trackedItems: TrackedItem[];
   onAlertToggle: (option: string) => void;
 }) {
+  const selectedNames = new Set(trackedItems.map((item) => item.name.toLowerCase()));
+  const relevantAlerts = briefingItems.filter((item) =>
+    item.relatedItems?.some((relatedItem) => selectedNames.has(relatedItem.toLowerCase())),
+  );
+
   return (
     <div className="tab-panel">
       <ScreenHeader
@@ -1573,7 +1622,13 @@ function AlertsTab({
       </section>
 
       <DashboardSection title="Actionable alerts" icon={<SlidersHorizontal size={18} />}>
-        {briefingItems.map((item) => (
+        {relevantAlerts.length === 0 && (
+          <div className="recommendation-card">
+            <strong>No actionable alerts yet</strong>
+            <p>Alerts will appear only for the specific interests you selected.</p>
+          </div>
+        )}
+        {relevantAlerts.map((item) => (
           <NotificationCard compact item={item} key={`alert-${item.id}`} />
         ))}
       </DashboardSection>

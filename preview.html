@@ -538,11 +538,7 @@
         <div class="tab" id="tab-discover">
           <p class="eyebrow">Recommendations</p>
           <h1 class="title">Discover</h1>
-          <article class="tracked">
-            <h3>Because you follow Tool and Pantera</h3>
-            <p>Radar suggests Gojira, Mastodon, and Lamb of God with a progressive metal rationale.</p>
-            <button class="action">Add to Radar</button>
-          </article>
+          <div class="stack" id="discover-list"></div>
         </div>
 
         <div class="tab" id="tab-alerts">
@@ -783,66 +779,94 @@
           title: "Metallica announced a Chicago show",
           detail: "Presale opens tomorrow at 10:00 AM.",
           action: "Buy Tickets",
+          relatedTo: ["Metallica"],
         },
         {
           category: "Comedians",
           title: "Nate Bargatze appeared on SmartLess",
           detail: "New interview available on Spotify, YouTube, and Apple Podcasts.",
           action: "Listen",
+          relatedTo: ["Nate Bargatze"],
         },
         {
           category: "Movies",
           title: "Fantastic Four tickets are available",
           detail: "Nearby theaters added opening weekend showtimes.",
           action: "View Showtimes",
+          relatedTo: ["Fantastic Four"],
         },
         {
           category: "Video Games",
           title: "Fortnite patch released",
           detail: "Balance changes, new event quests, and outage notes are live.",
           action: "Read Patch Notes",
+          relatedTo: ["Fortnite"],
         },
         {
           category: "Products & Brands",
           title: "Milwaukee restock alert",
           detail: "Selected tools are back in stock at nearby retailers.",
           action: "View Product",
+          relatedTo: ["Milwaukee"],
         },
         {
           category: "Local Events",
           title: "Food festival added near you",
           detail: "A weekend food truck event matches your local event interests.",
           action: "Add To Calendar",
+          relatedTo: ["Food Festivals"],
         },
         {
           category: "TV Shows",
           title: "New streaming availability found",
           detail: "Radar found a season update for one of your selected TV interests.",
           action: "Watch",
+          relatedTo: ["The Last of Us", "Shogun", "Severance", "Yellowstone"],
         },
         {
           category: "Podcasts",
           title: "New podcast episode matched",
           detail: "A new episode matches your selected podcast genres.",
           action: "Listen",
+          relatedTo: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend", "This Past Weekend"],
         },
         {
           category: "Authors / Books",
           title: "Book release signal found",
           detail: "Radar found a release update in one of your selected book interests.",
           action: "View Release",
+          relatedTo: ["Brandon Sanderson", "Sarah J. Maas", "Andy Weir", "Jack Carr"],
         },
         {
           category: "YouTubers / Creators",
           title: "Creator upload matched",
           detail: "A new creator update matches your selected creator areas.",
           action: "Watch",
+          relatedTo: ["MKBHD", "Linus Tech Tips", "Markiplier", "Good Mythical Morning"],
         },
         {
           category: "Sports",
           title: "Sports schedule update found",
           detail: "Radar found a schedule signal for your selected sports interests.",
           action: "View Details",
+          relatedTo: ["Carolina Panthers", "Charlotte Hornets", "Charlotte FC", "NFL"],
+        },
+      ];
+      const recommendationData = [
+        {
+          title: "Gojira",
+          detail: "A strong metal match based on your selected artists.",
+          requiresAny: ["Tool", "Pantera", "Metallica"],
+        },
+        {
+          title: "Mastodon",
+          detail: "Recommended from your heavy and progressive metal selections.",
+          requiresAny: ["Tool", "Gojira", "Lamb of God"],
+        },
+        {
+          title: "Lamb of God",
+          detail: "A high-signal recommendation from your metal selections.",
+          requiresAny: ["Metallica", "Megadeth", "Pantera"],
         },
       ];
       let categoryIndex = 0;
@@ -1048,7 +1072,14 @@
 
       function renderDashboard() {
         const selectedNames = completedSelections.map((selection) => selection.category);
-        const filteredBriefings = briefingData.filter((item) => selectedNames.includes(item.category));
+        const selectedInterestNames = new Set(
+          completedSelections
+            .flatMap((selection) => [...selection.suggestions, ...selection.genres])
+            .map((item) => item.toLowerCase())
+        );
+        const filteredBriefings = briefingData.filter((item) =>
+          item.relatedTo.some((relatedItem) => selectedInterestNames.has(relatedItem.toLowerCase()))
+        );
         const generatedBriefings = completedSelections.flatMap((selection) => {
           const followedItems = [...selection.suggestions, ...selection.genres].slice(0, 3);
           return followedItems.map((item) => ({
@@ -1064,14 +1095,19 @@
         document.getElementById("briefing-filter").textContent = selectedNames.length
           ? `Filtered for ${selectedNames.join(", ")}.`
           : "Your most important actionable updates in one place.";
-        document.getElementById("home-list").innerHTML = homeItems.map((item) => `
+        document.getElementById("home-list").innerHTML = homeItems.length ? homeItems.map((item) => `
           <article class="tracked">
             <p class="eyebrow">${item.category}</p>
             <h3>${item.title}</h3>
             <p>${item.detail}</p>
             <button class="action">${item.action}</button>
           </article>
-        `).join("");
+        `).join("") : `
+          <article class="tracked">
+            <h3>No updates yet</h3>
+            <p>Radar will only show briefing items tied to the exact interests you selected.</p>
+          </article>
+        `;
 
         document.getElementById("radar-list").innerHTML = completedSelections.map((selection) => {
           const items = [...selection.suggestions, ...selection.genres].slice(0, 5);
@@ -1084,6 +1120,22 @@
             </article>
           `;
         }).join("");
+
+        const recommendations = recommendationData.filter((item) =>
+          item.requiresAny.some((requiredItem) => selectedInterestNames.has(requiredItem.toLowerCase()))
+        );
+        document.getElementById("discover-list").innerHTML = recommendations.length ? recommendations.map((item) => `
+          <article class="tracked">
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            <button class="action">Add to Radar</button>
+          </article>
+        `).join("") : `
+          <article class="tracked">
+            <h3>No recommendations yet</h3>
+            <p>Discover will only recommend items after Radar has a specific selected interest to compare against.</p>
+          </article>
+        `;
       }
 
       function renderAlerts() {
