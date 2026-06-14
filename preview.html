@@ -181,20 +181,6 @@
         }
       }
 
-      .logo {
-        display: grid;
-        width: 5.25rem;
-        height: 5.25rem;
-        place-items: center;
-        margin: -2.5rem auto 1rem;
-        border: 1px solid rgba(45, 255, 135, 0.35);
-        border-radius: 1.7rem;
-        background: rgba(16, 34, 53, 0.78);
-        box-shadow: 0 0 32px rgba(45, 255, 135, 0.22);
-        color: var(--radar-green);
-        font-size: 2.2rem;
-      }
-
       .primary,
       .secondary,
       .ghost,
@@ -482,7 +468,6 @@
         </div>
 
         <div>
-          <div class="logo">R</div>
           <p class="eyebrow">Personal intelligence dashboard</p>
           <h1 class="title">Radar</h1>
           <p>Never Miss What Matters.</p>
@@ -946,9 +931,49 @@
       let selectedPreferences = [];
       let selectedRadius = "50 miles";
       let selectedAlerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+      let sonarAudioContext = null;
 
       function showScreen(id) {
         screens.forEach((screen) => document.getElementById(screen).classList.toggle("active", screen === id));
+      }
+
+      function enableSonarAudio() {
+        if (sonarAudioContext) {
+          return;
+        }
+
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          return;
+        }
+
+        sonarAudioContext = new AudioContextClass();
+      }
+
+      function playSonarPing() {
+        if (!sonarAudioContext) {
+          return;
+        }
+
+        if (sonarAudioContext.state === "suspended") {
+          sonarAudioContext.resume();
+        }
+
+        const oscillator = sonarAudioContext.createOscillator();
+        const gain = sonarAudioContext.createGain();
+        const start = sonarAudioContext.currentTime;
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(720, start);
+        oscillator.frequency.exponentialRampToValueAtTime(140, start + 0.42);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.08, start + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+
+        oscillator.connect(gain);
+        gain.connect(sonarAudioContext.destination);
+        oscillator.start(start);
+        oscillator.stop(start + 0.44);
       }
 
       function renderCategories() {
@@ -1279,6 +1304,9 @@
       document.querySelectorAll("[data-screen]").forEach((button) => {
         button.addEventListener("click", () => showScreen(button.dataset.screen));
       });
+
+      document.getElementById("splash").addEventListener("pointerdown", enableSonarAudio);
+      document.querySelector(".sweep").addEventListener("animationiteration", playSonarPing);
 
       document.getElementById("signin-form").addEventListener("submit", (event) => {
         event.preventDefault();

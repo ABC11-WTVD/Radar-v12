@@ -197,20 +197,7 @@ svg {
 .brand-lockup {
   display: grid;
   place-items: center;
-  margin-top: -2.5rem;
-}
-
-.logo-mark {
-  display: grid;
-  width: 5.25rem;
-  height: 5.25rem;
-  place-items: center;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(45, 255, 135, 0.35);
-  border-radius: 1.7rem;
-  background: rgba(16, 34, 53, 0.78);
-  box-shadow: var(--glow);
-  color: var(--radar-green);
+  margin-top: -1rem;
 }
 
 .tagline {

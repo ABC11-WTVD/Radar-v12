@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import {
   AlertTriangle,
@@ -821,19 +821,58 @@ function uniqueTrackedItems(items: TrackedItem[]) {
 }
 
 function SplashScreen({ onGetStarted }: { onGetStarted: () => void }) {
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const enableSonarAudio = () => {
+    if (audioContextRef.current) {
+      return;
+    }
+
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) {
+      return;
+    }
+
+    audioContextRef.current = new AudioContextClass();
+  };
+
+  const playSonarPing = () => {
+    const audioContext = audioContextRef.current;
+    if (!audioContext) {
+      return;
+    }
+
+    if (audioContext.state === 'suspended') {
+      void audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const start = audioContext.currentTime;
+
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(720, start);
+    oscillator.frequency.exponentialRampToValueAtTime(140, start + 0.42);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.08, start + 0.035);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.44);
+  };
+
   return (
-    <section className="screen splash-screen no-scroll-screen" aria-labelledby="splash-title">
+    <section className="screen splash-screen no-scroll-screen" aria-labelledby="splash-title" onPointerDown={enableSonarAudio}>
       <div className="radar-orbit" aria-hidden="true">
-        <div className="radar-sweep" />
+        <div className="radar-sweep" onAnimationIteration={playSonarPing} />
         <div className="radar-dot dot-one" />
         <div className="radar-dot dot-two" />
         <div className="radar-dot dot-three" />
       </div>
 
       <div className="brand-lockup">
-        <div className="logo-mark">
-          <RadarIcon size={42} strokeWidth={1.7} />
-        </div>
         <p className="eyebrow">Personal intelligence dashboard</p>
         <h1 id="splash-title">Radar</h1>
         <p className="tagline">Never Miss What Matters.</p>
