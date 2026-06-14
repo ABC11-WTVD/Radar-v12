@@ -553,6 +553,20 @@ function App() {
     });
   };
 
+  const addCustomSuggestion = (categoryId: string, value: string) => {
+    const suggestion = value.trim();
+    if (!suggestion) {
+      return;
+    }
+
+    updateSelection(categoryId, (current) => ({
+      ...current,
+      suggestions: current.suggestions.some((item) => item.toLowerCase() === suggestion.toLowerCase())
+        ? current.suggestions
+        : [...current.suggestions, suggestion],
+    }));
+  };
+
   const goToAccountChoice = () => setScreen('accountChoice');
 
   const startLocalMode = () => {
@@ -768,6 +782,7 @@ function App() {
           onCategoryStart={startSelectedCategories}
           onCategoryToggle={toggleCategoryForOnboarding}
           onCompleteCategory={completeCategory}
+          onCustomSuggestion={addCustomSuggestion}
           onSaveChanges={() => openDashboard()}
           onNextStep={goNextStep}
           onRadiusChange={(radius) => activeCategory && updateSelection(activeCategory.id, (current) => ({ ...current, radius }))}
@@ -944,6 +959,7 @@ function OnboardingScreen({
   onCategoryStart,
   onCategoryToggle,
   onCompleteCategory,
+  onCustomSuggestion,
   onSaveChanges,
   onNextStep,
   onRadiusChange,
@@ -963,6 +979,7 @@ function OnboardingScreen({
   onCategoryStart: () => void;
   onCategoryToggle: (index: number) => void;
   onCompleteCategory: () => void;
+  onCustomSuggestion: (categoryId: string, value: string) => void;
   onSaveChanges: () => void;
   onNextStep: () => void;
   onRadiusChange: (radius: string) => void;
@@ -1072,11 +1089,14 @@ function OnboardingScreen({
                   ? 'These suggestions are generated only from the choices you made in the previous step.'
                   : 'Select at least one genre before Radar shows suggestions.'
               }
-              options={generatedSuggestions}
+              options={unique([...generatedSuggestions, ...activeSelection.suggestions])}
               selected={activeSelection.suggestions}
+              customEntryLabel={`Add a missing ${activeCategory.name.toLowerCase()} favorite`}
+              customEntryPlaceholder="Type a name, title, team, brand, or event"
+              onCustomAdd={(value) => activeCategory && onCustomSuggestion(activeCategory.id, value)}
               onToggle={(value) => onToggle('suggestions', value)}
               actionLabel="Continue to alert preferences"
-              actionDisabled={generatedSuggestions.length === 0}
+              actionDisabled={activeSelection.suggestions.length === 0}
               emptyMessage="No suggestions are shown until a genre is selected."
               onNext={onNextStep}
             />
@@ -1136,8 +1156,11 @@ function OnboardingScreen({
 function ChoiceStep({
   actionDisabled,
   actionLabel,
+  customEntryLabel,
+  customEntryPlaceholder,
   description,
   emptyMessage,
+  onCustomAdd,
   onNext,
   onToggle,
   options,
@@ -1146,14 +1169,24 @@ function ChoiceStep({
 }: {
   actionDisabled: boolean;
   actionLabel: string;
+  customEntryLabel?: string;
+  customEntryPlaceholder?: string;
   description: string;
   emptyMessage?: string;
+  onCustomAdd?: (value: string) => void;
   onNext: () => void;
   onToggle: (value: string) => void;
   options: string[];
   selected: string[];
   title: string;
 }) {
+  const [customValue, setCustomValue] = useState('');
+  const handleCustomSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onCustomAdd?.(customValue);
+    setCustomValue('');
+  };
+
   return (
     <div>
       <h2>{title}</h2>
@@ -1171,6 +1204,25 @@ function ChoiceStep({
           </button>
         ))}
       </div>
+      {onCustomAdd && (
+        <form className="custom-entry-card" onSubmit={handleCustomSubmit}>
+          <label>
+            {customEntryLabel ?? 'Add something Radar did not suggest'}
+            <span>Enter an option if it is missing from the generated list.</span>
+          </label>
+          <div className="custom-entry-row">
+            <input
+              type="text"
+              value={customValue}
+              placeholder={customEntryPlaceholder ?? 'Type an option'}
+              onChange={(event) => setCustomValue(event.target.value)}
+            />
+            <button className="secondary-button compact" type="submit" disabled={customValue.trim().length === 0}>
+              Add
+            </button>
+          </div>
+        </form>
+      )}
       <button className="primary-button full-width" disabled={actionDisabled} type="button" onClick={onNext}>
         {actionLabel}
       </button>

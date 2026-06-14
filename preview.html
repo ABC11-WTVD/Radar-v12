@@ -333,6 +333,48 @@
         color: var(--notification-green);
       }
 
+      .custom-entry {
+        display: none;
+        gap: 0.65rem;
+        margin: 0 0 1rem;
+        padding: 0.9rem;
+        border: 1px solid rgba(66, 255, 170, 0.22);
+        border-radius: 1rem;
+        background: rgba(8, 19, 31, 0.46);
+      }
+
+      .custom-entry.active {
+        display: grid;
+      }
+
+      .custom-entry label {
+        display: grid;
+        gap: 0.25rem;
+        font-weight: 900;
+      }
+
+      .custom-entry label span {
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      .custom-entry-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.55rem;
+      }
+
+      .custom-entry input {
+        min-width: 0;
+        min-height: 2.65rem;
+        border: 1px solid var(--line);
+        border-radius: 0.85rem;
+        background: rgba(8, 19, 31, 0.78);
+        color: var(--text);
+        padding: 0.72rem 0.8rem;
+      }
+
       .dashboard {
         padding-bottom: 5.5rem;
       }
@@ -511,6 +553,16 @@
           <h2 id="flow-title">Select genres</h2>
           <p id="flow-description">Select genres before artist suggestions appear.</p>
           <div class="pill-grid" id="flow-options"></div>
+          <form class="custom-entry" id="custom-entry">
+            <label>
+              Add something Radar did not suggest
+              <span>Type a missing band, show, team, creator, product, event, or other favorite.</span>
+            </label>
+            <div class="custom-entry-row">
+              <input id="custom-entry-input" type="text" placeholder="Type an option" />
+              <button class="secondary" type="submit">Add</button>
+            </div>
+          </form>
           <button class="primary" type="button" id="flow-next">Continue</button>
         </div>
       </section>
@@ -974,7 +1026,7 @@
         if (step === "suggestions") {
           title = "Generated suggestions";
           description = "These are generated only from selected genres.";
-          list = [...new Set(selectedGenres.flatMap((genre) => category.suggestions[genre] || []))];
+          list = [...new Set([...selectedGenres.flatMap((genre) => category.suggestions[genre] || []), ...selectedSuggestions])];
           selected = selectedSuggestions;
           progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
         }
@@ -1008,6 +1060,7 @@
 
         document.getElementById("flow-title").textContent = title;
         document.getElementById("flow-description").textContent = description;
+        document.getElementById("custom-entry").classList.toggle("active", step === "suggestions");
         updateProgress(Math.min(progress, 94));
 
         if (list.length === 0) {
@@ -1041,6 +1094,18 @@
           bucket.splice(index, 1);
         } else {
           bucket.push(item);
+        }
+        renderFlow();
+      }
+
+      function addCustomSuggestion(value) {
+        const suggestion = value.trim();
+        if (!suggestion) {
+          return;
+        }
+
+        if (!selectedSuggestions.some((item) => item.toLowerCase() === suggestion.toLowerCase())) {
+          selectedSuggestions.push(suggestion);
         }
         renderFlow();
       }
@@ -1218,6 +1283,13 @@
       document.getElementById("signin-form").addEventListener("submit", (event) => {
         event.preventDefault();
         showScreen("onboarding");
+      });
+
+      document.getElementById("custom-entry").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = document.getElementById("custom-entry-input");
+        addCustomSuggestion(input.value);
+        input.value = "";
       });
 
       document.getElementById("back-to-categories").addEventListener("click", () => {
