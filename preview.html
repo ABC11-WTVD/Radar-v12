@@ -578,7 +578,7 @@
       const categories = [
         {
           name: "Music",
-          blurb: "Concerts, ticket drops, albums, singles, tour announcements, interviews, and podcast appearances.",
+          blurb: "Concerts, nearby show alerts, ticket drops, albums, singles, tour announcements, interviews, and podcast appearances.",
           genres: ["Rock", "Hard Rock", "Metal", "Heavy Metal", "Thrash Metal", "Death Metal", "Black Metal", "Metalcore", "Alternative", "Grunge", "Punk", "Pop Punk", "Country", "Outlaw Country", "Blues", "Jazz", "EDM", "House", "Techno", "Trance", "Rap", "Hip Hop", "Classical", "Folk", "Christian", "Indie"],
           suggestions: {
             Rock: ["Foo Fighters", "Pearl Jam", "The Black Keys", "Greta Van Fleet"],
@@ -608,7 +608,8 @@
             Christian: ["Lauren Daigle", "For King & Country", "Elevation Worship", "TobyMac"],
             Indie: ["Phoebe Bridgers", "Tame Impala", "Mitski", "The National"],
           },
-          preferences: ["Concerts", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Podcast appearances", "Interviews"],
+          preferences: ["Concerts", "Concerts near me", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Podcast appearances", "Interviews"],
+          location: true,
         },
         {
           name: "Movies",
@@ -693,6 +694,7 @@
             "Combat Sports": ["UFC", "WWE", "Boxing", "Bellator"],
           },
           preferences: ["Game times", "Ticket availability", "Schedule changes", "Standings", "Injury news", "Local events"],
+          location: true,
         },
         {
           name: "Products & Brands",
@@ -723,6 +725,7 @@
             "Food Festivals": ["BBQ Festival", "Food Truck Rodeo", "Seafood Festival", "Taste of Downtown"],
           },
           preferences: ["Event dates", "Ticket availability", "Schedule changes", "Weather alerts", "Add to calendar"],
+          location: true,
         },
         {
           name: "Authors / Books",
@@ -758,7 +761,7 @@
         },
         {
           name: "Comedians",
-          blurb: "Tour dates, specials, podcast appearances, TV appearances, and ticket/streaming links.",
+          blurb: "Tour dates, nearby show alerts, specials, podcast appearances, TV appearances, and ticket/streaming links.",
           genres: ["Clean Comedy", "Storytelling", "Observational", "Blue Collar", "Podcast Hosts", "Late Night", "Improv"],
           suggestions: {
             "Clean Comedy": ["Nate Bargatze", "Jim Gaffigan", "Brian Regan", "Leanne Morgan"],
@@ -769,10 +772,12 @@
             "Late Night": ["John Oliver", "Seth Meyers", "Stephen Colbert", "Jimmy Fallon"],
             Improv: ["Whose Line Is It Anyway", "Second City", "Upright Citizens Brigade", "Middleditch and Schwartz"],
           },
-          preferences: ["Tour dates", "Specials", "Podcast appearances", "TV appearances", "Ticketmaster links", "Spotify links", "YouTube links", "Apple Podcasts links", "Netflix links"],
+          preferences: ["Tour dates", "Comedy shows near me", "Specials", "Podcast appearances", "TV appearances", "Ticketmaster links", "Spotify links", "YouTube links", "Apple Podcasts links", "Netflix links"],
+          location: true,
         },
       ];
-      const alerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      const alerts = ["Concerts", "Concerts near me", "Comedy shows near me", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      const radii = ["25 miles", "50 miles", "100 miles", "250 miles", "500 miles"];
       const briefingData = [
         {
           category: "Music",
@@ -878,6 +883,7 @@
       let selectedGenres = [];
       let selectedSuggestions = [];
       let selectedPreferences = [];
+      let selectedRadius = "50 miles";
       let selectedAlerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
 
       function showScreen(id) {
@@ -926,6 +932,7 @@
         selectedGenres = [];
         selectedSuggestions = [];
         selectedPreferences = [];
+        selectedRadius = "50 miles";
         document.getElementById("category-step").hidden = true;
         document.getElementById("flow-step").hidden = false;
         renderFlow();
@@ -942,7 +949,7 @@
         let list = category.genres;
         let selected = selectedGenres;
         const categoryProgress = queuePosition / Math.max(onboardingQueue.length, 1);
-        const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.45 : step === "preferences" ? 0.7 : 0.95;
+        const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.42 : step === "preferences" ? 0.64 : step === "location" ? 0.82 : 0.95;
         let progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
 
         if (step === "suggestions") {
@@ -961,13 +968,21 @@
           progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
         }
 
+        if (step === "location") {
+          title = "Nearby alert radius";
+          description = "Choose how far Radar should look when a selected band or comedian announces a show near you.";
+          list = radii;
+          selected = [selectedRadius];
+          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+        }
+
         if (step === "summary") {
           title = `${category.name} summary`;
           const remaining = onboardingQueue.length - queuePosition - 1;
           description = remaining > 0
             ? `This category is ready. Save it and continue with ${remaining} more selected ${remaining === 1 ? "category" : "categories"}.`
             : "This is the last selected category. Saving it will open your filtered dashboard.";
-          list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences];
+          list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences, ...(category.location ? [selectedRadius] : [])];
           selected = list;
           progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
         }
@@ -995,6 +1010,12 @@
       }
 
       function toggleFlowItem(item) {
+        if (step === "location") {
+          selectedRadius = item;
+          renderFlow();
+          return;
+        }
+
         const bucket = step === "genres" ? selectedGenres : step === "suggestions" ? selectedSuggestions : selectedPreferences;
         const index = bucket.indexOf(item);
         if (index >= 0) {
@@ -1011,6 +1032,9 @@
         } else if (step === "suggestions") {
           step = "preferences";
         } else if (step === "preferences") {
+          const category = categories[categoryIndex];
+          step = category.location ? "location" : "summary";
+        } else if (step === "location") {
           step = "summary";
         } else {
           completeCurrentCategory();
@@ -1026,6 +1050,7 @@
           genres: [...selectedGenres],
           suggestions: [...selectedSuggestions],
           preferences: [...selectedPreferences],
+          radius: category.location ? selectedRadius : "",
         });
 
         if (queuePosition < onboardingQueue.length - 1) {
@@ -1082,10 +1107,13 @@
         );
         const generatedBriefings = completedSelections.flatMap((selection) => {
           const followedItems = [...selection.suggestions, ...selection.genres].slice(0, 3);
+          const nearMeEnabled = selection.preferences.some((preference) => preference.toLowerCase().includes("near me"));
           return followedItems.map((item) => ({
             category: selection.category,
             title: `${item} is now on your Radar`,
-            detail: `Radar will track ${selection.preferences.slice(0, 3).join(", ") || "updates"} for this selection.`,
+            detail: nearMeEnabled && selection.radius
+              ? `Radar will watch for nearby shows within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
+              : `Radar will track ${selection.preferences.slice(0, 3).join(", ") || "updates"} for this selection.`,
             action: actionForCategory(selection.category),
           }));
         });
@@ -1116,6 +1144,7 @@
               <p class="eyebrow">${selection.category}</p>
               <h3>${items.length ? items.join(", ") : selection.category}</h3>
               <p>${selection.preferences.join(", ")}</p>
+              ${selection.radius ? `<p>Nearby radius: ${selection.radius}</p>` : ""}
               <span class="status">Following</span>
             </article>
           `;

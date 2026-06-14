@@ -55,6 +55,8 @@ type TrackedItem = {
   name: string;
   status: TrackStatus;
   rationale?: string;
+  preferences?: string[];
+  radius?: string;
 };
 
 type BriefingItem = {
@@ -133,7 +135,7 @@ const categories: CategoryConfig[] = [
       Christian: ['Lauren Daigle', 'For King & Country', 'Elevation Worship', 'TobyMac', 'Needtobreathe'],
       Indie: ['Phoebe Bridgers', 'Tame Impala', 'Mitski', 'Japanese Breakfast', 'The National'],
     },
-    preferences: ['Concerts', 'Ticket price drops', 'New albums', 'New singles', 'Tour announcements', 'Podcast appearances', 'Interviews'],
+    preferences: ['Concerts', 'Concerts near me', 'Ticket price drops', 'New albums', 'New singles', 'Tour announcements', 'Podcast appearances', 'Interviews'],
     location: true,
   },
   {
@@ -338,7 +340,7 @@ const categories: CategoryConfig[] = [
       'Late Night': ['John Oliver', 'Seth Meyers', 'Stephen Colbert', 'Jimmy Fallon'],
       Improv: ['Whose Line Is It Anyway', 'Second City', 'Upright Citizens Brigade', 'Middleditch and Schwartz'],
     },
-    preferences: ['Tour dates', 'Specials', 'Podcast appearances', 'TV appearances', 'Ticketmaster links', 'Spotify links', 'YouTube links', 'Apple Podcasts links', 'Netflix links'],
+    preferences: ['Tour dates', 'Comedy shows near me', 'Specials', 'Podcast appearances', 'TV appearances', 'Ticketmaster links', 'Spotify links', 'YouTube links', 'Apple Podcasts links', 'Netflix links'],
     location: true,
   },
 ];
@@ -346,7 +348,7 @@ const categories: CategoryConfig[] = [
 const alertGroups = [
   {
     name: 'Music',
-    options: ['Concerts', 'Ticket price drops', 'New albums', 'New singles', 'Tour announcements', 'Interviews'],
+    options: ['Concerts', 'Concerts near me', 'Ticket price drops', 'New albums', 'New singles', 'Tour announcements', 'Interviews'],
   },
   {
     name: 'Movies & TV',
@@ -362,7 +364,7 @@ const alertGroups = [
   },
   {
     name: 'Radar Features',
-    options: ['Daily digest', 'High priority alerts', 'Recommendations', 'Near me', 'Watchlist summaries'],
+    options: ['Daily digest', 'High priority alerts', 'Recommendations', 'Near me', 'Comedy shows near me', 'Watchlist summaries'],
   },
 ];
 
@@ -662,6 +664,8 @@ function App() {
         id: `${category.id}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
         category: category.name,
         name,
+        preferences: selection.preferences,
+        radius: category.location ? selection.radius : undefined,
         status: 'following' as TrackStatus,
       }));
     });
@@ -1061,7 +1065,9 @@ function OnboardingScreen({
           {activeStep === 'location' && (
             <div>
               <h2>Location radius</h2>
-              <p className="step-description">Radar uses location for concerts, comedy, sports, and local events. Video games do not include this step.</p>
+              <p className="step-description">
+                Radar uses this radius for nearby alerts, including when selected bands or comedians announce shows near you. Video games do not include this step.
+              </p>
               <div className="pill-grid">
                 {radii.map((radius) => (
                   <button
@@ -1257,7 +1263,7 @@ function HomeTab({
     id: `personalized-${item.id}`,
     category: item.category,
     title: `${item.name} is on your Radar`,
-    detail: `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for the update types you selected during onboarding.`,
+    detail: detailForTrackedItem(item),
     priority: item.status === 'watchlist' ? 'recommendation' : 'news',
     action: actionForCategory(item.category),
   }));
@@ -1339,6 +1345,17 @@ function HomeTab({
       </DashboardSection>
     </div>
   );
+}
+
+function detailForTrackedItem(item: TrackedItem) {
+  const preferences = item.preferences ?? [];
+  const nearMeEnabled = preferences.some((preference) => preference.toLowerCase().includes('near me'));
+
+  if (nearMeEnabled && item.radius) {
+    return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for nearby shows within ${item.radius} miles.`;
+  }
+
+  return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for the update types you selected during onboarding.`;
 }
 
 function actionForCategory(category: string) {
