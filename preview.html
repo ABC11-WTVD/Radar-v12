@@ -497,7 +497,10 @@
           <p>Select multiple categories first. Radar will then walk you through each selected category one at a time.</p>
           <div class="card" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
             <strong><span id="category-count">0</span> selected</strong>
-            <button class="secondary" id="start-selected" type="button" disabled>Start selected setup</button>
+            <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem;">
+              <button class="secondary" id="start-selected" type="button" disabled>Start selected setup</button>
+              <button class="ghost" id="save-selected" type="button" disabled>Save changes</button>
+            </div>
           </div>
           <div class="list" id="categories"></div>
         </div>
@@ -532,6 +535,7 @@
         <div class="tab" id="tab-radar">
           <p class="eyebrow">Everything you follow</p>
           <h1 class="title">Your Radar</h1>
+          <button class="primary" id="manage-radars" type="button">Manage selected radars</button>
           <div class="stack" id="radar-list"></div>
         </div>
 
@@ -884,6 +888,7 @@
       let onboardingQueue = [];
       let queuePosition = 0;
       let completedSelections = [];
+      let hasOpenedDashboard = false;
       let selectedGenres = [];
       let selectedSuggestions = [];
       let selectedPreferences = [];
@@ -899,15 +904,19 @@
         container.innerHTML = "";
         document.getElementById("category-count").textContent = selectedCategoryIndexes.length;
         document.getElementById("start-selected").disabled = selectedCategoryIndexes.length === 0;
+        document.getElementById("save-selected").disabled = selectedCategoryIndexes.length === 0 && !hasOpenedDashboard;
         categories.forEach((category, index) => {
           const button = document.createElement("button");
           button.className = `choice ${selectedCategoryIndexes.includes(index) ? "selected" : ""}`;
           button.type = "button";
           button.innerHTML = `<strong>${category.name}</strong><span>${category.blurb}</span>`;
           button.addEventListener("click", () => {
-            selectedCategoryIndexes = selectedCategoryIndexes.includes(index)
-              ? selectedCategoryIndexes.filter((categoryNumber) => categoryNumber !== index)
-              : [...selectedCategoryIndexes, index];
+            if (selectedCategoryIndexes.includes(index)) {
+              selectedCategoryIndexes = selectedCategoryIndexes.filter((categoryNumber) => categoryNumber !== index);
+              completedSelections = completedSelections.filter((selection) => selection.category !== category.name);
+            } else {
+              selectedCategoryIndexes = [...selectedCategoryIndexes, index];
+            }
             renderCategories();
           });
           container.appendChild(button);
@@ -924,9 +933,15 @@
           return;
         }
 
-        onboardingQueue = [...selectedCategoryIndexes];
+        const completedNames = new Set(completedSelections.map((selection) => selection.category));
+        onboardingQueue = selectedCategoryIndexes.filter((index) => !completedNames.has(categories[index].name));
+        if (onboardingQueue.length === 0) {
+          renderDashboard();
+          showScreen("dashboard");
+          return;
+        }
+
         queuePosition = 0;
-        completedSelections = [];
         beginCategory(onboardingQueue[queuePosition]);
       }
 
@@ -952,16 +967,16 @@
         let description = "Suggestions are hidden until you select at least one genre.";
         let list = category.genres;
         let selected = selectedGenres;
-        const categoryProgress = queuePosition / Math.max(onboardingQueue.length, 1);
+        const queueLength = Math.max(onboardingQueue.length, 1);
         const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.42 : step === "preferences" ? 0.64 : step === "location" ? 0.82 : 0.95;
-        let progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+        let progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
 
         if (step === "suggestions") {
           title = "Generated suggestions";
           description = "These are generated only from selected genres.";
           list = [...new Set(selectedGenres.flatMap((genre) => category.suggestions[genre] || []))];
           selected = selectedSuggestions;
-          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
         }
 
         if (step === "preferences") {
@@ -969,7 +984,7 @@
           description = "Choose actionable notification types.";
           list = category.preferences;
           selected = selectedPreferences;
-          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
         }
 
         if (step === "location") {
@@ -977,7 +992,7 @@
           description = "Choose how far Radar should look for in-person alerts like concerts, comedy shows, showtimes, sports, signings, creator events, and local events.";
           list = radii;
           selected = [selectedRadius];
-          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
         }
 
         if (step === "summary") {
@@ -988,7 +1003,7 @@
             : "This is the last selected category. Saving it will open your filtered dashboard.";
           list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences, ...(category.location ? [selectedRadius] : [])];
           selected = list;
-          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
         }
 
         document.getElementById("flow-title").textContent = title;
@@ -1049,6 +1064,7 @@
 
       function completeCurrentCategory() {
         const category = categories[categoryIndex];
+        completedSelections = completedSelections.filter((selection) => selection.category !== category.name);
         completedSelections.push({
           category: category.name,
           genres: [...selectedGenres],
@@ -1065,6 +1081,7 @@
 
         renderDashboard();
         showScreen("dashboard");
+        hasOpenedDashboard = true;
       }
 
       function actionForCategory(category) {
@@ -1100,6 +1117,7 @@
       }
 
       function renderDashboard() {
+        hasOpenedDashboard = true;
         const selectedNames = completedSelections.map((selection) => selection.category);
         const selectedInterestNames = new Set(
           completedSelections
@@ -1141,7 +1159,7 @@
           </article>
         `;
 
-        document.getElementById("radar-list").innerHTML = completedSelections.map((selection) => {
+        document.getElementById("radar-list").innerHTML = completedSelections.length ? completedSelections.map((selection) => {
           const items = [...selection.suggestions, ...selection.genres].slice(0, 5);
           return `
             <article class="tracked">
@@ -1152,7 +1170,12 @@
               <span class="status">Following</span>
             </article>
           `;
-        }).join("");
+        }).join("") : `
+          <article class="tracked">
+            <h3>No radars selected</h3>
+            <p>Use Manage selected radars to add categories and interests.</p>
+          </article>
+        `;
 
         const recommendations = recommendationData.filter((item) =>
           item.requiresAny.some((requiredItem) => selectedInterestNames.has(requiredItem.toLowerCase()))
@@ -1205,6 +1228,18 @@
       });
 
       document.getElementById("start-selected").addEventListener("click", startSelectedSetup);
+      document.getElementById("save-selected").addEventListener("click", () => {
+        renderDashboard();
+        showScreen("dashboard");
+        hasOpenedDashboard = true;
+      });
+      document.getElementById("manage-radars").addEventListener("click", () => {
+        document.getElementById("flow-step").hidden = true;
+        document.getElementById("category-step").hidden = false;
+        renderCategories();
+        updateProgress(0);
+        showScreen("onboarding");
+      });
       document.getElementById("flow-next").addEventListener("click", nextFlowStep);
 
       document.querySelectorAll("[data-tab]").forEach((button) => {

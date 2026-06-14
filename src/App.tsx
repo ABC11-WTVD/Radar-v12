@@ -452,6 +452,7 @@ function App() {
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('category');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [completedCategoryIds, setCompletedCategoryIds] = useState<string[]>([]);
+  const [hasOpenedDashboard, setHasOpenedDashboard] = useState(false);
   const [selections, setSelections] = useState<Record<string, CategorySelection>>({});
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>(['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>([]);
@@ -559,6 +560,7 @@ function App() {
     setScreen('onboarding');
     setSelectedCategoryIds([]);
     setCompletedCategoryIds([]);
+    setHasOpenedDashboard(false);
     resetOnboardingScreen();
   };
 
@@ -574,21 +576,31 @@ function App() {
     setScreen('onboarding');
     setSelectedCategoryIds([]);
     setCompletedCategoryIds([]);
+    setHasOpenedDashboard(false);
+    resetOnboardingScreen();
+  };
+
+  const manageRadars = () => {
+    setScreen('onboarding');
     resetOnboardingScreen();
   };
 
   const toggleCategoryForOnboarding = (index: number) => {
     const category = categories[index];
 
-    if (completedCategoryIds.includes(category.id)) {
+    if (selectedCategoryIds.includes(category.id)) {
+      setSelectedCategoryIds((current) => current.filter((categoryId) => categoryId !== category.id));
+      setCompletedCategoryIds((current) => current.filter((categoryId) => categoryId !== category.id));
+      setSelections((current) => {
+        const nextSelections = { ...current };
+        delete nextSelections[category.id];
+        return nextSelections;
+      });
+      setTrackedItems((current) => current.filter((item) => item.category !== category.name));
       return;
     }
 
-    setSelectedCategoryIds((current) =>
-      current.includes(category.id)
-        ? current.filter((categoryId) => categoryId !== category.id)
-        : [...current, category.id],
-    );
+    setSelectedCategoryIds((current) => [...current, category.id]);
   };
 
   const startSelectedCategories = () => {
@@ -657,7 +669,7 @@ function App() {
   const openDashboard = (completedIds = completedCategoryIds) => {
     const categoriesToUse = selectedCategoryIds.length
       ? categories.filter((category) => selectedCategoryIds.includes(category.id))
-      : categories;
+      : [];
     const selectedItems = categoriesToUse.flatMap((category) => {
       const selection = selections[category.id];
       if (!selection) {
@@ -695,6 +707,7 @@ function App() {
 
     setScreen('dashboard');
     setDashboardTab('home');
+    setHasOpenedDashboard(true);
   };
 
   const toggleAlert = (option: string) => {
@@ -749,11 +762,13 @@ function App() {
           completedCategoryIds={completedCategoryIds}
           generatedSuggestions={generatedSuggestions}
           progress={onboardingProgress}
+          hasOpenedDashboard={hasOpenedDashboard}
           selectedCategoryIds={selectedCategoryIds}
           onBackStep={goBackStep}
           onCategoryStart={startSelectedCategories}
           onCategoryToggle={toggleCategoryForOnboarding}
           onCompleteCategory={completeCategory}
+          onSaveChanges={() => openDashboard()}
           onNextStep={goNextStep}
           onRadiusChange={(radius) => activeCategory && updateSelection(activeCategory.id, (current) => ({ ...current, radius }))}
           onToggle={(key, value) => activeCategory && toggleSelection(activeCategory.id, key, value)}
@@ -768,6 +783,7 @@ function App() {
           trackedItems={visibleTrackedItems}
           onAddRecommendation={addRecommendation}
           onAlertToggle={toggleAlert}
+          onManageRadars={manageRadars}
           onRemoveTrackedItem={removeTrackedItem}
           onTabChange={setDashboardTab}
           onTrackedStatusChange={updateTrackedItem}
@@ -922,11 +938,13 @@ function OnboardingScreen({
   completedCategoryIds,
   generatedSuggestions,
   progress,
+  hasOpenedDashboard,
   selectedCategoryIds,
   onBackStep,
   onCategoryStart,
   onCategoryToggle,
   onCompleteCategory,
+  onSaveChanges,
   onNextStep,
   onRadiusChange,
   onToggle,
@@ -939,11 +957,13 @@ function OnboardingScreen({
   completedCategoryIds: string[];
   generatedSuggestions: string[];
   progress: number;
+  hasOpenedDashboard: boolean;
   selectedCategoryIds: string[];
   onBackStep: () => void;
   onCategoryStart: () => void;
   onCategoryToggle: (index: number) => void;
   onCompleteCategory: () => void;
+  onSaveChanges: () => void;
   onNextStep: () => void;
   onRadiusChange: (radius: string) => void;
   onToggle: (key: keyof Pick<CategorySelection, 'genres' | 'suggestions' | 'preferences' | 'platforms'>, value: string) => void;
@@ -972,9 +992,19 @@ function OnboardingScreen({
 
           <div className="category-status">
             <span>{selectedCategoryIds.length} selected • {completedCount} complete</span>
-            <button className="secondary-button compact" disabled={remainingSelectedCount === 0} type="button" onClick={onCategoryStart}>
-              Start selected setup
-            </button>
+            <div className="category-actions">
+              <button className="secondary-button compact" disabled={remainingSelectedCount === 0} type="button" onClick={onCategoryStart}>
+                Start selected setup
+              </button>
+              <button
+                className="ghost-button compact"
+                disabled={selectedCategoryIds.length === 0 && !hasOpenedDashboard}
+                type="button"
+                onClick={onSaveChanges}
+              >
+                Save changes
+              </button>
+            </div>
           </div>
 
           <div className="category-list" aria-label="Radar categories">
@@ -984,7 +1014,6 @@ function OnboardingScreen({
               return (
                 <button
                   className={`category-card ${isSelected ? 'is-selected' : ''} ${isCompleted ? 'is-complete' : ''}`}
-                  disabled={isCompleted}
                   key={category.id}
                   type="button"
                   onClick={() => onCategoryToggle(index)}
@@ -1201,6 +1230,7 @@ function DashboardScreen({
   trackedItems,
   onAddRecommendation,
   onAlertToggle,
+  onManageRadars,
   onRemoveTrackedItem,
   onTabChange,
   onTrackedStatusChange,
@@ -1212,6 +1242,7 @@ function DashboardScreen({
   trackedItems: TrackedItem[];
   onAddRecommendation: (title: string, status: TrackStatus) => void;
   onAlertToggle: (option: string) => void;
+  onManageRadars: () => void;
   onRemoveTrackedItem: (itemId: string) => void;
   onTabChange: (tab: DashboardTab) => void;
   onTrackedStatusChange: (itemId: string, status: TrackStatus) => void;
@@ -1228,6 +1259,7 @@ function DashboardScreen({
         {activeTab === 'radar' && (
           <RadarTab
             groupedTrackedItems={groupedTrackedItems}
+            onManageRadars={onManageRadars}
             onRemove={onRemoveTrackedItem}
             onStatusChange={onTrackedStatusChange}
           />
@@ -1453,13 +1485,17 @@ function DashboardSection({ children, icon, title }: { children: ReactNode; icon
 
 function RadarTab({
   groupedTrackedItems,
+  onManageRadars,
   onRemove,
   onStatusChange,
 }: {
   groupedTrackedItems: Record<string, TrackedItem[]>;
+  onManageRadars: () => void;
   onRemove: (itemId: string) => void;
   onStatusChange: (itemId: string, status: TrackStatus) => void;
 }) {
+  const hasTrackedItems = Object.keys(groupedTrackedItems).length > 0;
+
   return (
     <div className="tab-panel">
       <ScreenHeader
@@ -1468,9 +1504,16 @@ function RadarTab({
         description="Following sends notifications. Watchlist tracks quietly without notifications. Paused items stay saved but stop alerting."
       />
 
-      <button className="primary-button full-width" type="button">
-        Add a new interest
+      <button className="primary-button full-width" type="button" onClick={onManageRadars}>
+        Manage selected radars
       </button>
+
+      {!hasTrackedItems && (
+        <div className="recommendation-card">
+          <strong>No radars selected</strong>
+          <p>Add categories or interests to build your Radar.</p>
+        </div>
+      )}
 
       {Object.entries(groupedTrackedItems).map(([category, items]) => (
         <section className="radar-group" key={category}>
