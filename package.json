@@ -1,0 +1,33 @@
+{
+  "name": "radar-v12",
+  "version": "1.0.0",
+  "description": "Mobile-first personalized interest tracking dashboard for Radar.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ABC11-WTVD/Radar-v12.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/ABC11-WTVD/Radar-v12/issues"
+  },
+  "homepage": "https://github.com/ABC11-WTVD/Radar-v12#readme",
+  "dependencies": {
+    "lucide-react": "^1.18.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}
