@@ -924,6 +924,71 @@
           requiresAny: ["Metallica", "Megadeth", "Pantera"],
         },
       ];
+      const nearMeDiscoveryData = [
+        {
+          category: "Music",
+          title: "Summer amphitheater concert series",
+          detail: "A nearby outdoor concert series matches your music interests, but is not already on your Radar.",
+          action: "View Nearby Shows",
+          href: "https://www.ticketmaster.com/search?q=concerts%20near%20me",
+          relatedCategories: ["Music"],
+          source: "Ticketmaster / Bandsintown",
+        },
+        {
+          category: "Comedians",
+          title: "Weekend comedy club lineup",
+          detail: "Local comedy shows are coming up near you based on your comedy selections.",
+          action: "View Comedy Shows",
+          href: "https://www.ticketmaster.com/search?q=comedy%20near%20me",
+          relatedCategories: ["Comedians", "Podcasts"],
+          source: "Ticketmaster / Venue calendars",
+        },
+        {
+          category: "Local Events",
+          title: "Food truck festival downtown",
+          detail: "A food festival is happening nearby and may fit your local event interests.",
+          action: "View Event",
+          href: "https://www.google.com/search?q=food%20festival%20near%20me",
+          relatedCategories: ["Local Events"],
+          source: "Local event feeds",
+        },
+        {
+          category: "Sports",
+          title: "Minor league baseball homestand",
+          detail: "A nearby sports event may be relevant even though this team is not on your Radar yet.",
+          action: "View Tickets",
+          href: "https://www.ticketmaster.com/search?q=sports%20near%20me",
+          relatedCategories: ["Sports"],
+          source: "Ticketmaster / Team calendars",
+        },
+        {
+          category: "Movies",
+          title: "Retro movie night nearby",
+          detail: "A theater event near you matches your movie interests without being one of your tracked titles.",
+          action: "View Showtimes",
+          href: "https://www.google.com/search?q=movie%20showtimes%20near%20me",
+          relatedCategories: ["Movies"],
+          source: "Theater showtimes",
+        },
+        {
+          category: "Authors / Books",
+          title: "Local author signing",
+          detail: "A signing event near you may match your book interests and is not already tracked.",
+          action: "View Signing",
+          href: "https://www.google.com/search?q=author%20signing%20near%20me",
+          relatedCategories: ["Authors / Books"],
+          source: "Bookstore event feeds",
+        },
+        {
+          category: "YouTubers / Creators",
+          title: "Creator meetup nearby",
+          detail: "A creator-focused event near you may fit your creator selections.",
+          action: "View Event",
+          href: "https://www.google.com/search?q=creator%20meetup%20near%20me",
+          relatedCategories: ["YouTubers / Creators"],
+          source: "Creator / venue feeds",
+        },
+      ];
       let categoryIndex = 0;
       let step = "genres";
       let selectedCategoryIndexes = [];
@@ -1392,7 +1457,12 @@
         const recommendations = recommendationData.filter((item) =>
           item.requiresAny.some((requiredItem) => selectedInterestNames.has(requiredItem.toLowerCase()))
         );
-        document.getElementById("discover-list").innerHTML = recommendations.length ? recommendations.map((item) => `
+        const trackedTitles = new Set([...selectedInterestNames]);
+        const nearbyDiscoveries = nearMeDiscoveryData.filter((item) =>
+          item.relatedCategories.some((category) => selectedNames.includes(category)) &&
+          !trackedTitles.has(item.title.toLowerCase())
+        );
+        const recommendationMarkup = recommendations.length ? recommendations.map((item) => `
           <article class="tracked">
             <h3>${item.title}</h3>
             <p>${item.detail}</p>
@@ -1404,6 +1474,29 @@
             <p>Discover will only recommend items after Radar has a specific selected interest to compare against.</p>
           </article>
         `;
+        const nearMeMarkup = nearbyDiscoveries.length ? `
+          <article class="tracked">
+            <p class="eyebrow">Near Me</p>
+            <h3>Things happening near you</h3>
+            <p>Related to your selections, but not already on your Radar.</p>
+          </article>
+          ${nearbyDiscoveries.map((item) => `
+            <article class="tracked">
+              <p class="eyebrow">${item.category}</p>
+              <h3>${item.title}</h3>
+              <p>${item.detail}</p>
+              <p class="eyebrow">Discovery source: ${item.source}</p>
+              <a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>
+            </article>
+          `).join("")}
+        ` : `
+          <article class="tracked">
+            <p class="eyebrow">Near Me</p>
+            <h3>No nearby discoveries yet</h3>
+            <p>Select in-person interests like concerts, comedy, movies, sports, books, creators, or local events to discover nearby things not already on your Radar.</p>
+          </article>
+        `;
+        document.getElementById("discover-list").innerHTML = `${recommendationMarkup}${nearMeMarkup}`;
       }
 
       function renderAlerts() {

@@ -435,6 +435,72 @@ const recommendations = [
   },
 ];
 
+const nearMeDiscoveries = [
+  {
+    category: 'Music',
+    title: 'Summer amphitheater concert series',
+    detail: 'A nearby outdoor concert series matches your music interests, but is not already on your Radar.',
+    action: 'View Nearby Shows',
+    href: 'https://www.ticketmaster.com/search?q=concerts%20near%20me',
+    relatedCategories: ['Music'],
+    source: 'Ticketmaster / Bandsintown',
+  },
+  {
+    category: 'Comedians',
+    title: 'Weekend comedy club lineup',
+    detail: 'Local comedy shows are coming up near you based on your comedy selections.',
+    action: 'View Comedy Shows',
+    href: 'https://www.ticketmaster.com/search?q=comedy%20near%20me',
+    relatedCategories: ['Comedians', 'Podcasts'],
+    source: 'Ticketmaster / Venue calendars',
+  },
+  {
+    category: 'Local Events',
+    title: 'Food truck festival downtown',
+    detail: 'A food festival is happening nearby and may fit your local event interests.',
+    action: 'View Event',
+    href: 'https://www.google.com/search?q=food%20festival%20near%20me',
+    relatedCategories: ['Local Events'],
+    source: 'Local event feeds',
+  },
+  {
+    category: 'Sports',
+    title: 'Minor league baseball homestand',
+    detail: 'A nearby sports event may be relevant even though this team is not on your Radar yet.',
+    action: 'View Tickets',
+    href: 'https://www.ticketmaster.com/search?q=sports%20near%20me',
+    relatedCategories: ['Sports'],
+    source: 'Ticketmaster / Team calendars',
+  },
+  {
+    category: 'Movies',
+    title: 'Retro movie night nearby',
+    detail: 'A theater event near you matches your movie interests without being one of your tracked titles.',
+    action: 'View Showtimes',
+    href: 'https://www.google.com/search?q=movie%20showtimes%20near%20me',
+    relatedCategories: ['Movies'],
+    source: 'Theater showtimes',
+  },
+  {
+    category: 'Authors / Books',
+    title: 'Local author signing',
+    detail: 'A signing event near you may match your book interests and is not already tracked.',
+    action: 'View Signing',
+    href: 'https://www.google.com/search?q=author%20signing%20near%20me',
+    relatedCategories: ['Authors / Books'],
+    source: 'Bookstore event feeds',
+  },
+  {
+    category: 'YouTubers / Creators',
+    title: 'Creator meetup nearby',
+    detail: 'A creator-focused event near you may fit your creator selections.',
+    action: 'View Event',
+    href: 'https://www.google.com/search?q=creator%20meetup%20near%20me',
+    relatedCategories: ['YouTubers / Creators'],
+    source: 'Creator / venue feeds',
+  },
+];
+
 const services = ['Spotify', 'Apple Music', 'YouTube', 'Netflix', 'Disney+', 'Prime Video', 'Hulu', 'Steam', 'Xbox', 'PlayStation', 'Nintendo'];
 
 const defaultSelection = (): CategorySelection => ({
@@ -1650,6 +1716,21 @@ function isInPersonCategory(category: string) {
   return ['Music', 'Movies', 'Podcasts', 'Sports', 'Local Events', 'Authors / Books', 'YouTubers / Creators', 'Comedians'].includes(category);
 }
 
+function buildNearMeDiscoveries(trackedItems: TrackedItem[]) {
+  const trackedCategories = new Set(trackedItems.map((item) => item.category));
+  const trackedNames = new Set(trackedItems.map((item) => item.name.toLowerCase()));
+
+  if (trackedCategories.size === 0) {
+    return [];
+  }
+
+  return nearMeDiscoveries.filter((item) => {
+    const matchesCategory = item.relatedCategories.some((category) => trackedCategories.has(category));
+    const alreadyTracked = trackedNames.has(item.title.toLowerCase());
+    return matchesCategory && !alreadyTracked;
+  });
+}
+
 function actionForCategory(category: string) {
   if (category === 'Podcasts') {
     return 'Find Latest Episode';
@@ -1843,6 +1924,7 @@ function DiscoverTab({
   const rationaleSource = recommendations
     .flatMap((item) => item.requiresAny)
     .filter((item, index, allItems) => selectedNames.has(item.toLowerCase()) && allItems.indexOf(item) === index);
+  const nearbyDiscoveries = buildNearMeDiscoveries(trackedItems);
 
   return (
     <div className="tab-panel">
@@ -1891,14 +1973,26 @@ function DiscoverTab({
         ))}
       </div>
 
-      <section className="near-me-card">
-        <MapPin aria-hidden="true" />
-        <div>
-          <p className="eyebrow">Near Me</p>
-          <h2>Local signals based on your interests</h2>
-          <p>Concerts, comedy, sports, festivals, air shows, car shows, fairs, farmers markets, and food festivals.</p>
-        </div>
-      </section>
+      <DashboardSection title="Near Me" icon={<MapPin size={18} />}>
+        {nearbyDiscoveries.length === 0 && (
+          <div className="recommendation-card large">
+            <strong>No nearby discoveries yet</strong>
+            <p>Select in-person interests like concerts, comedy, movies, sports, books, creators, or local events to discover nearby things that are not already on your Radar.</p>
+          </div>
+        )}
+        {nearbyDiscoveries.map((item) => (
+          <article className="recommendation-card large" key={item.title}>
+            <p className="notification-category">{item.category}</p>
+            <strong>{item.title}</strong>
+            <p>{item.detail}</p>
+            <p className="source-line">Discovery source: {item.source}</p>
+            <a className="action-button" href={item.href} rel="noreferrer" target="_blank">
+              <Ticket size={15} aria-hidden="true" />
+              {item.action}
+            </a>
+          </article>
+        ))}
+      </DashboardSection>
     </div>
   );
 }
