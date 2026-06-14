@@ -625,7 +625,8 @@
             Animation: ["Inside Out", "Spider-Verse", "Toy Story", "The Wild Robot"],
             Documentary: ["Formula 1: Drive to Survive", "Planet Earth", "The Last Dance", "Free Solo"],
           },
-          preferences: ["Trailers", "Theater release", "Streaming release", "Digital release", "Showtimes", "Leaving streaming soon"],
+          preferences: ["Trailers", "Theater release", "Streaming release", "Digital release", "Showtimes", "Showtimes near me", "Leaving streaming soon"],
+          location: true,
         },
         {
           name: "TV Shows",
@@ -661,7 +662,8 @@
             "Interview Shows": ["WTF with Marc Maron", "Armchair Expert", "Fresh Air"],
             Storytelling: ["This American Life", "Snap Judgment", "The Moth", "Heavyweight"],
           },
-          preferences: ["New episodes", "Guest appearances", "Live events", "Video versions", "Special releases", "Spotify links", "YouTube links", "Apple Podcasts links"],
+          preferences: ["New episodes", "Guest appearances", "Live events", "Live events near me", "Video versions", "Special releases", "Spotify links", "YouTube links", "Apple Podcasts links"],
+          location: true,
         },
         {
           name: "Video Games",
@@ -693,7 +695,7 @@
             Golf: ["The Masters", "PGA Tour", "Ryder Cup", "U.S. Open"],
             "Combat Sports": ["UFC", "WWE", "Boxing", "Bellator"],
           },
-          preferences: ["Game times", "Ticket availability", "Schedule changes", "Standings", "Injury news", "Local events"],
+          preferences: ["Game times", "Games near me", "Ticket availability", "Schedule changes", "Standings", "Injury news", "Local events"],
           location: true,
         },
         {
@@ -724,7 +726,7 @@
             "Craft Shows": ["Holiday Craft Show", "Makers Market", "Artisan Fair", "Woodworking Expo"],
             "Food Festivals": ["BBQ Festival", "Food Truck Rodeo", "Seafood Festival", "Taste of Downtown"],
           },
-          preferences: ["Event dates", "Ticket availability", "Schedule changes", "Weather alerts", "Add to calendar"],
+          preferences: ["Event dates", "Events near me", "Ticket availability", "Schedule changes", "Weather alerts", "Add to calendar"],
           location: true,
         },
         {
@@ -741,7 +743,8 @@
             Biography: ["Walter Isaacson", "Ron Chernow", "Michelle Obama", "David Grann"],
             Faith: ["C. S. Lewis", "Timothy Keller", "Max Lucado", "Lysa TerKeurst"],
           },
-          preferences: ["New books", "Audiobooks", "Author signings", "Interviews", "Series updates", "Recommendations"],
+          preferences: ["New books", "Audiobooks", "Author signings", "Author signings near me", "Interviews", "Series updates", "Recommendations"],
+          location: true,
         },
         {
           name: "YouTubers / Creators",
@@ -757,7 +760,8 @@
             Food: ["Binging with Babish", "Joshua Weissman", "Sorted Food", "Claire Saffitz"],
             Education: ["Veritasium", "Smarter Every Day", "Kurzgesagt", "CrashCourse"],
           },
-          preferences: ["New videos", "Collaborations", "Live streams", "Product drops", "Tours", "Podcast appearances"],
+          preferences: ["New videos", "Collaborations", "Live streams", "Creator events near me", "Product drops", "Tours", "Podcast appearances"],
+          location: true,
         },
         {
           name: "Comedians",
@@ -776,7 +780,7 @@
           location: true,
         },
       ];
-      const alerts = ["Concerts", "Concerts near me", "Comedy shows near me", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      const alerts = ["Concerts", "Concerts near me", "Comedy shows near me", "Showtimes near me", "Live events near me", "Games near me", "Events near me", "Author signings near me", "Creator events near me", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
       const radii = ["25 miles", "50 miles", "100 miles", "250 miles", "500 miles"];
       const briefingData = [
         {
@@ -970,7 +974,7 @@
 
         if (step === "location") {
           title = "Nearby alert radius";
-          description = "Choose how far Radar should look when a selected band or comedian announces a show near you.";
+          description = "Choose how far Radar should look for in-person alerts like concerts, comedy shows, showtimes, sports, signings, creator events, and local events.";
           list = radii;
           selected = [selectedRadius];
           progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
@@ -1112,7 +1116,7 @@
             category: selection.category,
             title: `${item} is now on your Radar`,
             detail: nearMeEnabled && selection.radius
-              ? `Radar will watch for nearby shows within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
+              ? `Radar will watch for nearby in-person updates within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
               : `Radar will track ${selection.preferences.slice(0, 3).join(", ") || "updates"} for this selection.`,
             action: actionForCategory(selection.category),
           }));

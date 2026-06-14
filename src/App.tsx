@@ -156,7 +156,8 @@ const categories: CategoryConfig[] = [
       Animation: ['Inside Out', 'Spider-Verse', 'Toy Story', 'The Wild Robot'],
       Documentary: ['Formula 1: Drive to Survive', 'Planet Earth', 'The Last Dance', 'Free Solo'],
     },
-    preferences: ['Trailers', 'Theater release', 'Streaming release', 'Digital release', 'Showtimes', 'Leaving streaming soon'],
+    preferences: ['Trailers', 'Theater release', 'Streaming release', 'Digital release', 'Showtimes', 'Showtimes near me', 'Leaving streaming soon'],
+    location: true,
   },
   {
     id: 'tv',
@@ -200,7 +201,8 @@ const categories: CategoryConfig[] = [
       'Interview Shows': ['WTF with Marc Maron', 'Armchair Expert', 'Fresh Air', 'Hot Ones'],
       Storytelling: ['This American Life', 'Snap Judgment', 'The Moth', 'Heavyweight'],
     },
-    preferences: ['New episodes', 'Guest appearances', 'Live events', 'Video versions', 'Special releases', 'Spotify links', 'YouTube links', 'Apple Podcasts links'],
+    preferences: ['New episodes', 'Guest appearances', 'Live events', 'Live events near me', 'Video versions', 'Special releases', 'Spotify links', 'YouTube links', 'Apple Podcasts links'],
+    location: true,
   },
   {
     id: 'games',
@@ -241,7 +243,7 @@ const categories: CategoryConfig[] = [
       Golf: ['The Masters', 'PGA Tour', 'Ryder Cup', 'U.S. Open'],
       'Combat Sports': ['UFC', 'WWE', 'Boxing', 'Bellator'],
     },
-    preferences: ['Game times', 'Ticket availability', 'Schedule changes', 'Standings', 'Injury news', 'Local events'],
+    preferences: ['Game times', 'Games near me', 'Ticket availability', 'Schedule changes', 'Standings', 'Injury news', 'Local events'],
     location: true,
   },
   {
@@ -280,7 +282,7 @@ const categories: CategoryConfig[] = [
       'Craft Shows': ['Holiday Craft Show', 'Makers Market', 'Artisan Fair', 'Woodworking Expo'],
       'Food Festivals': ['BBQ Festival', 'Food Truck Rodeo', 'Seafood Festival', 'Taste of Downtown'],
     },
-    preferences: ['Event dates', 'Ticket availability', 'Schedule changes', 'Weather alerts', 'Add to calendar'],
+    preferences: ['Event dates', 'Events near me', 'Ticket availability', 'Schedule changes', 'Weather alerts', 'Add to calendar'],
     location: true,
   },
   {
@@ -301,7 +303,8 @@ const categories: CategoryConfig[] = [
       Biography: ['Walter Isaacson', 'Ron Chernow', 'Michelle Obama', 'David Grann'],
       Faith: ['C. S. Lewis', 'Timothy Keller', 'Max Lucado', 'Lysa TerKeurst'],
     },
-    preferences: ['New books', 'Audiobooks', 'Author signings', 'Interviews', 'Series updates', 'Recommendations'],
+    preferences: ['New books', 'Audiobooks', 'Author signings', 'Author signings near me', 'Interviews', 'Series updates', 'Recommendations'],
+    location: true,
   },
   {
     id: 'creators',
@@ -321,7 +324,8 @@ const categories: CategoryConfig[] = [
       Food: ['Binging with Babish', 'Joshua Weissman', 'Sorted Food', 'Claire Saffitz'],
       Education: ['Veritasium', 'Smarter Every Day', 'Kurzgesagt', 'CrashCourse'],
     },
-    preferences: ['New videos', 'Collaborations', 'Live streams', 'Product drops', 'Tours', 'Podcast appearances'],
+    preferences: ['New videos', 'Collaborations', 'Live streams', 'Creator events near me', 'Product drops', 'Tours', 'Podcast appearances'],
+    location: true,
   },
   {
     id: 'comedians',
@@ -352,7 +356,7 @@ const alertGroups = [
   },
   {
     name: 'Movies & TV',
-    options: ['Trailers', 'Theater release', 'Streaming release', 'New episodes', 'Renewals', 'Cancellations'],
+    options: ['Trailers', 'Theater release', 'Streaming release', 'Showtimes near me', 'New episodes', 'Renewals', 'Cancellations'],
   },
   {
     name: 'Games',
@@ -364,7 +368,7 @@ const alertGroups = [
   },
   {
     name: 'Radar Features',
-    options: ['Daily digest', 'High priority alerts', 'Recommendations', 'Near me', 'Comedy shows near me', 'Watchlist summaries'],
+    options: ['Daily digest', 'High priority alerts', 'Recommendations', 'Near me', 'Comedy shows near me', 'Games near me', 'Events near me', 'Author signings near me', 'Creator events near me', 'Watchlist summaries'],
   },
 ];
 
@@ -1066,7 +1070,7 @@ function OnboardingScreen({
             <div>
               <h2>Location radius</h2>
               <p className="step-description">
-                Radar uses this radius for nearby alerts, including when selected bands or comedians announce shows near you. Video games do not include this step.
+                Radar uses this radius for nearby alerts, including concerts, comedy shows, showtimes, sports, signings, creator events, and local events.
               </p>
               <div className="pill-grid">
                 {radii.map((radius) => (
@@ -1352,7 +1356,7 @@ function detailForTrackedItem(item: TrackedItem) {
   const nearMeEnabled = preferences.some((preference) => preference.toLowerCase().includes('near me'));
 
   if (nearMeEnabled && item.radius) {
-    return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for nearby shows within ${item.radius} miles.`;
+    return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for nearby in-person updates within ${item.radius} miles.`;
   }
 
   return `${item.status === 'watchlist' ? 'Tracking quietly' : 'Notifications enabled'} for the update types you selected during onboarding.`;
