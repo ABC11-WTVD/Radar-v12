@@ -593,35 +593,198 @@
       const categories = [
         {
           name: "Music",
-          genres: ["Rock", "Hard Rock", "Metal", "Thrash Metal", "Alternative", "Country", "Blues", "Jazz", "EDM", "Rap", "Indie"],
+          blurb: "Concerts, ticket drops, albums, singles, tour announcements, interviews, and podcast appearances.",
+          genres: ["Rock", "Hard Rock", "Metal", "Heavy Metal", "Thrash Metal", "Death Metal", "Black Metal", "Metalcore", "Alternative", "Grunge", "Punk", "Pop Punk", "Country", "Outlaw Country", "Blues", "Jazz", "EDM", "House", "Techno", "Trance", "Rap", "Hip Hop", "Classical", "Folk", "Christian", "Indie"],
           suggestions: {
-            Metal: ["Metallica", "Tool", "Pantera", "Megadeth", "Gojira", "Lamb of God", "Iron Maiden"],
-            "Thrash Metal": ["Metallica", "Megadeth", "Slayer", "Anthrax", "Testament"],
             Rock: ["Foo Fighters", "Pearl Jam", "The Black Keys", "Greta Van Fleet"],
+            "Hard Rock": ["AC/DC", "Aerosmith", "Guns N Roses", "Shinedown"],
+            Metal: ["Metallica", "Tool", "Pantera", "Megadeth", "Gojira", "Lamb of God", "Iron Maiden"],
+            "Heavy Metal": ["Black Sabbath", "Judas Priest", "Iron Maiden", "Dio"],
+            "Thrash Metal": ["Metallica", "Megadeth", "Slayer", "Anthrax", "Testament"],
+            "Death Metal": ["Death", "Cannibal Corpse", "Morbid Angel", "Obituary"],
+            "Black Metal": ["Mayhem", "Emperor", "Darkthrone", "Immortal"],
+            Metalcore: ["Killswitch Engage", "August Burns Red", "Trivium", "Architects"],
             Alternative: ["Radiohead", "Muse", "The Killers", "Cage the Elephant"],
+            Grunge: ["Nirvana", "Pearl Jam", "Soundgarden", "Alice in Chains"],
+            Punk: ["The Clash", "Ramones", "Rancid", "Bad Religion"],
+            "Pop Punk": ["Blink-182", "Green Day", "Paramore", "Fall Out Boy"],
             Country: ["Chris Stapleton", "Zach Bryan", "Lainey Wilson", "Luke Combs"],
+            "Outlaw Country": ["Waylon Jennings", "Willie Nelson", "Sturgill Simpson", "Tyler Childers"],
+            Blues: ["Gary Clark Jr.", "Buddy Guy", "Joe Bonamassa", "Tedeschi Trucks Band"],
+            Jazz: ["Kamasi Washington", "Herbie Hancock", "Snarky Puppy", "Esperanza Spalding"],
+            EDM: ["Calvin Harris", "Illenium", "Zedd", "ODESZA"],
+            House: ["Disclosure", "Chris Lake", "Dom Dolla", "Green Velvet"],
+            Techno: ["Charlotte de Witte", "Amelie Lens", "Adam Beyer", "Carl Cox"],
+            Trance: ["Armin van Buuren", "Above & Beyond", "Paul van Dyk", "Gareth Emery"],
+            Rap: ["Kendrick Lamar", "J. Cole", "Drake", "Nas"],
+            "Hip Hop": ["Run The Jewels", "The Roots", "Denzel Curry", "Little Simz"],
+            Classical: ["Yo-Yo Ma", "Hilary Hahn", "Lang Lang", "Max Richter"],
+            Folk: ["Noah Kahan", "The Lumineers", "Bon Iver", "Brandi Carlile"],
+            Christian: ["Lauren Daigle", "For King & Country", "Elevation Worship", "TobyMac"],
+            Indie: ["Phoebe Bridgers", "Tame Impala", "Mitski", "The National"],
           },
-          preferences: ["Concerts", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Interviews"],
+          preferences: ["Concerts", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Podcast appearances", "Interviews"],
+        },
+        {
+          name: "Movies",
+          blurb: "Trailers, theater releases, streaming releases, digital releases, showtimes, and leaving-streaming alerts.",
+          genres: ["Superhero", "Action", "Horror", "Comedy", "Sci-Fi", "Drama", "Animation", "Documentary"],
+          suggestions: {
+            Superhero: ["Fantastic Four", "Superman", "The Batman Part II", "Avengers: Secret Wars"],
+            Action: ["Mission: Impossible", "John Wick", "Ballerina", "The Old Guard"],
+            Horror: ["Weapons", "The Conjuring", "M3GAN", "A Quiet Place"],
+            Comedy: ["The Naked Gun", "Happy Gilmore", "Only Murders in the Building"],
+            "Sci-Fi": ["Dune", "Project Hail Mary", "Tron: Ares", "Avatar"],
+            Drama: ["Marty Supreme", "The Brutalist", "Sing Sing", "Past Lives"],
+            Animation: ["Inside Out", "Spider-Verse", "Toy Story", "The Wild Robot"],
+            Documentary: ["Formula 1: Drive to Survive", "Planet Earth", "The Last Dance", "Free Solo"],
+          },
+          preferences: ["Trailers", "Theater release", "Streaming release", "Digital release", "Showtimes", "Leaving streaming soon"],
+        },
+        {
+          name: "TV Shows",
+          blurb: "Episodes, seasons, renewals, cancellations, and streaming availability.",
+          genres: ["Comedy", "Drama", "Sci-Fi", "Fantasy", "Reality", "Crime", "Animation", "Documentary"],
+          suggestions: {
+            Comedy: ["The Bear", "Abbott Elementary", "Hacks", "Only Murders in the Building"],
+            Drama: ["The Last of Us", "Shogun", "Severance", "Yellowstone"],
+            "Sci-Fi": ["Stranger Things", "Foundation", "Silo", "Doctor Who"],
+            Fantasy: ["House of the Dragon", "The Rings of Power", "The Witcher", "Wheel of Time"],
+            Reality: ["Survivor", "The Amazing Race", "Top Chef", "Alone"],
+            Crime: ["True Detective", "Mindhunter", "Fargo", "Mare of Easttown"],
+            Animation: ["Invincible", "X-Men 97", "Bluey", "Rick and Morty"],
+            Documentary: ["Welcome to Wrexham", "Chef Table", "Our Planet", "Quarterback"],
+          },
+          preferences: ["Episodes", "Seasons", "Renewals", "Cancellations", "Streaming availability"],
         },
         {
           name: "Podcasts",
-          genres: ["Comedy", "Technology", "History", "Business", "Science", "Sports", "Gaming", "True Crime"],
+          blurb: "New episodes, guest appearances, live events, video versions, and special releases.",
+          genres: ["Comedy", "Technology", "History", "Business", "Finance", "Science", "Sports", "Gaming", "News", "True Crime", "Interview Shows", "Storytelling"],
           suggestions: {
-            Comedy: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend"],
-            Technology: ["Waveform", "Decoder", "Hard Fork"],
-            History: ["Hardcore History", "The Rest Is History"],
+            Comedy: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend", "This Past Weekend"],
+            Technology: ["Waveform", "Decoder", "Hard Fork", "Darknet Diaries"],
+            History: ["Hardcore History", "The Rest Is History", "American History Tellers"],
+            Business: ["How I Built This", "Acquired", "Masters of Scale"],
+            Finance: ["Planet Money", "The Indicator", "Motley Fool Money"],
+            Science: ["Radiolab", "Science Vs", "Ologies", "StarTalk"],
+            Sports: ["The Bill Simmons Podcast", "Pardon My Take", "The Lowe Post"],
+            Gaming: ["Kinda Funny Gamescast", "Triple Click", "SpawnCast"],
+            News: ["The Daily", "Up First", "Today Explained"],
+            "True Crime": ["Serial", "Crime Junkie", "Casefile", "Criminal"],
+            "Interview Shows": ["WTF with Marc Maron", "Armchair Expert", "Fresh Air"],
+            Storytelling: ["This American Life", "Snap Judgment", "The Moth", "Heavyweight"],
           },
-          preferences: ["New episodes", "Guest appearances", "Live events", "Video versions", "Special releases"],
+          preferences: ["New episodes", "Guest appearances", "Live events", "Video versions", "Special releases", "Spotify links", "YouTube links", "Apple Podcasts links"],
         },
         {
           name: "Video Games",
+          blurb: "Release dates, DLC, updates, patches, betas, server outages, events, and developer announcements.",
           genres: ["RPG", "FPS", "MMO", "Strategy", "Sports", "Simulation", "Survival", "Action"],
           suggestions: {
-            RPG: ["Elden Ring", "Final Fantasy", "Baldurs Gate 3"],
+            RPG: ["Elden Ring", "Final Fantasy", "Baldurs Gate 3", "The Witcher"],
             FPS: ["Call of Duty", "Halo", "Valorant", "Apex Legends"],
-            Action: ["Fortnite", "Helldivers 2", "Grand Theft Auto"],
+            MMO: ["World of Warcraft", "Final Fantasy XIV", "Guild Wars 2", "The Elder Scrolls Online"],
+            Strategy: ["Civilization", "Age of Empires", "XCOM", "Total War"],
+            Sports: ["EA Sports FC", "Madden NFL", "NBA 2K", "MLB The Show"],
+            Simulation: ["Microsoft Flight Simulator", "The Sims", "Cities: Skylines", "Stardew Valley"],
+            Survival: ["Minecraft", "Rust", "Valheim", "Subnautica"],
+            Action: ["Fortnite", "Helldivers 2", "Grand Theft Auto", "God of War"],
           },
-          preferences: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages"],
+          preferences: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages", "Events", "Developer announcements"],
+        },
+        {
+          name: "Sports",
+          blurb: "Games, tickets, standings, schedule changes, injury news, and local sports events.",
+          genres: ["Football", "Basketball", "Baseball", "Hockey", "Soccer", "NASCAR", "Golf", "Combat Sports"],
+          suggestions: {
+            Football: ["Carolina Panthers", "Dallas Cowboys", "Kansas City Chiefs", "NFL"],
+            Basketball: ["Charlotte Hornets", "Boston Celtics", "Golden State Warriors", "NBA"],
+            Baseball: ["Atlanta Braves", "New York Yankees", "Chicago Cubs", "MLB"],
+            Hockey: ["Carolina Hurricanes", "New York Rangers", "Vegas Golden Knights", "NHL"],
+            Soccer: ["Charlotte FC", "USMNT", "Premier League", "MLS"],
+            NASCAR: ["Daytona 500", "Charlotte Motor Speedway", "NASCAR Cup Series"],
+            Golf: ["The Masters", "PGA Tour", "Ryder Cup", "U.S. Open"],
+            "Combat Sports": ["UFC", "WWE", "Boxing", "Bellator"],
+          },
+          preferences: ["Game times", "Ticket availability", "Schedule changes", "Standings", "Injury news", "Local events"],
+        },
+        {
+          name: "Products & Brands",
+          blurb: "Price drops, restocks, new versions, recalls, and availability.",
+          genres: ["Tools", "Gaming Hardware", "Vehicles", "Makers", "Home Tech", "Outdoor Gear"],
+          suggestions: {
+            Tools: ["Milwaukee", "DeWalt", "Makita", "Ryobi"],
+            "Gaming Hardware": ["Nintendo", "Steam Deck", "PlayStation Portal", "Xbox Series X"],
+            Vehicles: ["Ford", "Toyota", "Jeep", "Tesla"],
+            Makers: ["Laser Engravers", "3D Printers", "CNC Routers", "Glowforge"],
+            "Home Tech": ["Ring", "Nest", "Eufy", "Sonos"],
+            "Outdoor Gear": ["YETI", "Traeger", "Solo Stove", "Blackstone"],
+          },
+          preferences: ["Price drops", "Restocks", "New versions", "Recalls", "Availability"],
+        },
+        {
+          name: "Local Events",
+          blurb: "County fairs, air shows, car shows, comic cons, festivals, markets, craft shows, and food festivals.",
+          genres: ["County Fairs", "Air Shows", "Car Shows", "Comic Cons", "Festivals", "Farmers Markets", "Craft Shows", "Food Festivals"],
+          suggestions: {
+            "County Fairs": ["State Fair", "County Fair", "Livestock Show", "Carnival Night"],
+            "Air Shows": ["Blue Angels Air Show", "Warbird Fly-In", "Aviation Expo", "Airport Open House"],
+            "Car Shows": ["Cars and Coffee", "Classic Auto Show", "Cruise-In", "Truck Expo"],
+            "Comic Cons": ["GalaxyCon", "Comic-Con", "Anime Convention", "Collector Expo"],
+            Festivals: ["Music Festival", "Street Festival", "Arts Festival", "Heritage Festival"],
+            "Farmers Markets": ["Downtown Farmers Market", "Night Market", "Holiday Market", "Local Produce Fair"],
+            "Craft Shows": ["Holiday Craft Show", "Makers Market", "Artisan Fair", "Woodworking Expo"],
+            "Food Festivals": ["BBQ Festival", "Food Truck Rodeo", "Seafood Festival", "Taste of Downtown"],
+          },
+          preferences: ["Event dates", "Ticket availability", "Schedule changes", "Weather alerts", "Add to calendar"],
+        },
+        {
+          name: "Authors / Books",
+          blurb: "New releases, audiobooks, author signings, interviews, series updates, and recommendations.",
+          genres: ["Fantasy", "Sci-Fi", "Mystery", "Thriller", "History", "Business", "Biography", "Faith"],
+          suggestions: {
+            Fantasy: ["Brandon Sanderson", "Sarah J. Maas", "George R. R. Martin", "Rebecca Yarros"],
+            "Sci-Fi": ["Andy Weir", "Martha Wells", "James S. A. Corey", "Blake Crouch"],
+            Mystery: ["Louise Penny", "Michael Connelly", "Agatha Christie", "Tana French"],
+            Thriller: ["Jack Carr", "James Patterson", "David Baldacci", "Lee Child"],
+            History: ["Erik Larson", "David McCullough", "Doris Kearns Goodwin", "Jon Meacham"],
+            Business: ["Morgan Housel", "Adam Grant", "Simon Sinek", "Cal Newport"],
+            Biography: ["Walter Isaacson", "Ron Chernow", "Michelle Obama", "David Grann"],
+            Faith: ["C. S. Lewis", "Timothy Keller", "Max Lucado", "Lysa TerKeurst"],
+          },
+          preferences: ["New books", "Audiobooks", "Author signings", "Interviews", "Series updates", "Recommendations"],
+        },
+        {
+          name: "YouTubers / Creators",
+          blurb: "Uploads, collaborations, live streams, product drops, tours, and podcast appearances.",
+          genres: ["Tech", "Gaming", "Comedy", "DIY", "Cars", "Outdoors", "Food", "Education"],
+          suggestions: {
+            Tech: ["MKBHD", "Linus Tech Tips", "iJustine", "Mrwhosetheboss"],
+            Gaming: ["Markiplier", "Jacksepticeye", "GameSpot", "Kinda Funny"],
+            Comedy: ["Good Mythical Morning", "Dropout", "Try Guys", "Dude Perfect"],
+            DIY: ["Adam Savage Tested", "I Like To Make Stuff", "April Wilkerson", "Make Something"],
+            Cars: ["Donut Media", "Doug DeMuro", "Throttle House", "Hagerty"],
+            Outdoors: ["Outdoor Boys", "REI", "MeatEater", "Adventure Archives"],
+            Food: ["Binging with Babish", "Joshua Weissman", "Sorted Food", "Claire Saffitz"],
+            Education: ["Veritasium", "Smarter Every Day", "Kurzgesagt", "CrashCourse"],
+          },
+          preferences: ["New videos", "Collaborations", "Live streams", "Product drops", "Tours", "Podcast appearances"],
+        },
+        {
+          name: "Comedians",
+          blurb: "Tour dates, specials, podcast appearances, TV appearances, and ticket/streaming links.",
+          genres: ["Clean Comedy", "Storytelling", "Observational", "Blue Collar", "Podcast Hosts", "Late Night", "Improv"],
+          suggestions: {
+            "Clean Comedy": ["Nate Bargatze", "Jim Gaffigan", "Brian Regan", "Leanne Morgan"],
+            Storytelling: ["Mike Birbiglia", "Hasan Minhaj", "John Mulaney", "Taylor Tomlinson"],
+            Observational: ["Jerry Seinfeld", "Sebastian Maniscalco", "Tom Papa", "Gary Gulman"],
+            "Blue Collar": ["Jeff Foxworthy", "Larry the Cable Guy", "Bill Engvall", "Ron White"],
+            "Podcast Hosts": ["Theo Von", "Marc Maron", "Bert Kreischer", "Tom Segura"],
+            "Late Night": ["John Oliver", "Seth Meyers", "Stephen Colbert", "Jimmy Fallon"],
+            Improv: ["Whose Line Is It Anyway", "Second City", "Upright Citizens Brigade", "Middleditch and Schwartz"],
+          },
+          preferences: ["Tour dates", "Specials", "Podcast appearances", "TV appearances", "Ticketmaster links", "Spotify links", "YouTube links", "Apple Podcasts links", "Netflix links"],
         },
       ];
       const alerts = ["Concerts", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
@@ -643,7 +806,7 @@
           const button = document.createElement("button");
           button.className = "choice";
           button.type = "button";
-          button.innerHTML = `<strong>${category.name}</strong><span>Complete this category before moving to another.</span>`;
+          button.innerHTML = `<strong>${category.name}</strong><span>${category.blurb}</span>`;
           button.addEventListener("click", () => {
             categoryIndex = index;
             step = "genres";
@@ -673,14 +836,16 @@
         let description = "Suggestions are hidden until you select at least one genre.";
         let list = category.genres;
         let selected = selectedGenres;
-        let progress = 18 + categoryIndex * 18;
+        const categoryProgress = categoryIndex / categories.length;
+        const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.45 : step === "preferences" ? 0.7 : 0.95;
+        let progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
 
         if (step === "suggestions") {
           title = "Generated suggestions";
           description = "These are generated only from selected genres.";
           list = [...new Set(selectedGenres.flatMap((genre) => category.suggestions[genre] || []))];
           selected = selectedSuggestions;
-          progress += 9;
+          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
         }
 
         if (step === "preferences") {
@@ -688,7 +853,7 @@
           description = "Choose actionable notification types.";
           list = category.preferences;
           selected = selectedPreferences;
-          progress += 18;
+          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
         }
 
         if (step === "summary") {
@@ -696,7 +861,7 @@
           description = "This category is ready. Open your dashboard or go back to add more.";
           list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences];
           selected = list;
-          progress += 27;
+          progress = Math.round(((categoryProgress + stepProgress / categories.length) * 100));
         }
 
         document.getElementById("flow-title").textContent = title;
