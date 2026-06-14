@@ -429,7 +429,7 @@
         bottom: 0.8rem;
         left: 0.8rem;
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 0.35rem;
         width: min(calc(100% - 1.6rem), 560px);
         margin: 0 auto;
@@ -443,7 +443,7 @@
         min-height: 3.45rem;
         background: transparent;
         color: var(--muted);
-        font-size: 0.72rem;
+        font-size: 0.66rem;
       }
 
       .nav button.active {
@@ -587,6 +587,13 @@
           <div class="stack" id="discover-list"></div>
         </div>
 
+        <div class="tab" id="tab-near-me">
+          <p class="eyebrow">Location-based discovery</p>
+          <h1 class="title">Near Me</h1>
+          <p>Concerts, comedy shows, movie showtimes, sports, festivals, air shows, car shows, fairs, creator events, and author signings related to your selections.</p>
+          <div class="stack" id="near-me-list"></div>
+        </div>
+
         <div class="tab" id="tab-alerts">
           <p class="eyebrow">Today, week, month, category, priority</p>
           <h1 class="title">Alerts</h1>
@@ -613,6 +620,7 @@
           <button class="active" type="button" data-tab="home">Home</button>
           <button type="button" data-tab="radar">Radar</button>
           <button type="button" data-tab="discover">Discover</button>
+          <button type="button" data-tab="near-me">Near Me</button>
           <button type="button" data-tab="alerts">Alerts</button>
           <button type="button" data-tab="settings">Settings</button>
         </nav>
@@ -826,7 +834,15 @@
           location: true,
         },
       ];
-      const alerts = ["Concerts", "Concerts near me", "Comedy shows near me", "Showtimes near me", "Live events near me", "Games near me", "Events near me", "Author signings near me", "Creator events near me", "New albums", "Trailers", "Updates", "Daily digest", "Price drops", "Restocks", "Recommendations"];
+      const alertGroups = [
+        { name: "Music", options: ["Concerts", "Concerts near me", "New albums", "New singles", "Tour announcements"] },
+        { name: "Movies & TV", options: ["Trailers", "Theater release", "Streaming release", "Showtimes near me", "New episodes", "Renewals"] },
+        { name: "Games", options: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages"] },
+        { name: "Podcasts", options: ["New episodes", "Guest appearances", "Live events", "Live events near me", "Spotify links", "YouTube links", "Apple Podcasts links"] },
+        { name: "Products", options: ["Price drops", "Restocks", "New versions", "Recalls", "Availability"] },
+        { name: "Local Events", options: ["Events near me", "Festivals", "Air shows", "Car shows", "Fairs", "Add to calendar"] },
+        { name: "Radar Features", options: ["Daily digest", "High priority alerts", "Recommendations", "Near me", "Watchlist summaries"] },
+      ];
       const radii = ["25 miles", "50 miles", "100 miles", "250 miles", "500 miles"];
       const briefingData = [
         {
@@ -1462,6 +1478,20 @@
           item.relatedCategories.some((category) => selectedNames.includes(category)) &&
           !trackedTitles.has(item.title.toLowerCase())
         );
+        const nearMeCards = nearbyDiscoveries.length ? nearbyDiscoveries.map((item) => `
+          <article class="tracked">
+            <p class="eyebrow">${item.category}</p>
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            <p class="eyebrow">Discovery source: ${item.source}</p>
+            <a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>
+          </article>
+        `).join("") : `
+          <article class="tracked">
+            <h3>No nearby discoveries yet</h3>
+            <p>Select in-person interests like concerts, comedy, movies, sports, books, creators, or local events to discover nearby things not already on your Radar.</p>
+          </article>
+        `;
         const recommendationMarkup = recommendations.length ? recommendations.map((item) => `
           <article class="tracked">
             <h3>${item.title}</h3>
@@ -1480,15 +1510,7 @@
             <h3>Things happening near you</h3>
             <p>Related to your selections, but not already on your Radar.</p>
           </article>
-          ${nearbyDiscoveries.map((item) => `
-            <article class="tracked">
-              <p class="eyebrow">${item.category}</p>
-              <h3>${item.title}</h3>
-              <p>${item.detail}</p>
-              <p class="eyebrow">Discovery source: ${item.source}</p>
-              <a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>
-            </article>
-          `).join("")}
+          ${nearMeCards}
         ` : `
           <article class="tracked">
             <p class="eyebrow">Near Me</p>
@@ -1497,22 +1519,29 @@
           </article>
         `;
         document.getElementById("discover-list").innerHTML = `${recommendationMarkup}${nearMeMarkup}`;
+        document.getElementById("near-me-list").innerHTML = nearMeCards;
       }
 
       function renderAlerts() {
         const container = document.getElementById("alert-options");
         container.innerHTML = "";
-        alerts.forEach((alert) => {
-          const button = document.createElement("button");
-          button.className = `pill ${selectedAlerts.includes(alert) ? "selected" : ""}`;
-          button.type = "button";
-          button.textContent = alert;
-          button.addEventListener("click", () => {
-            selectedAlerts = selectedAlerts.includes(alert) ? selectedAlerts.filter((item) => item !== alert) : [...selectedAlerts, alert];
-            document.getElementById("selected-count").textContent = selectedAlerts.length;
-            renderAlerts();
+        alertGroups.forEach((group) => {
+          const groupNode = document.createElement("section");
+          groupNode.innerHTML = `<h2>${group.name}</h2><div class="pill-grid"></div>`;
+          const grid = groupNode.querySelector(".pill-grid");
+          group.options.forEach((alert) => {
+            const button = document.createElement("button");
+            button.className = `pill ${selectedAlerts.includes(alert) ? "selected" : ""}`;
+            button.type = "button";
+            button.textContent = alert;
+            button.addEventListener("click", () => {
+              selectedAlerts = selectedAlerts.includes(alert) ? selectedAlerts.filter((item) => item !== alert) : [...selectedAlerts, alert];
+              document.getElementById("selected-count").textContent = selectedAlerts.length;
+              renderAlerts();
+            });
+            grid.appendChild(button);
           });
-          container.appendChild(button);
+          container.appendChild(groupNode);
         });
       }
 

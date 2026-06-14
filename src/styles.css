@@ -295,6 +295,13 @@ svg {
   font-weight: 800;
 }
 
+.signal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .primary-button:hover,
 .secondary-button:hover,
 .ghost-button:hover,
@@ -852,7 +859,7 @@ svg {
   left: 0.8rem;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 0.35rem;
   width: min(calc(100% - 1.6rem), 560px);
   margin: 0 auto;
@@ -872,7 +879,7 @@ svg {
   border-radius: 1rem;
   background: transparent;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 800;
 }
 

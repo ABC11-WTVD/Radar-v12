@@ -20,12 +20,20 @@ import {
   UserRound,
   Zap,
 } from 'lucide-react';
+import {
+  buildCalendarAction,
+  buildMockSourceIds,
+  mockNearMeSignalsForInterests,
+  mockSignalsForInterests,
+  type RadarSignal,
+  type SourceIds,
+  type TrackStatus,
+} from './radarApi';
 
 type AppScreen = 'splash' | 'accountChoice' | 'signIn' | 'onboarding' | 'dashboard';
-type DashboardTab = 'home' | 'radar' | 'discover' | 'alerts' | 'settings';
+type DashboardTab = 'home' | 'radar' | 'discover' | 'nearMe' | 'alerts' | 'settings';
 type OnboardingStep = 'category' | 'platforms' | 'genres' | 'suggestions' | 'preferences' | 'location' | 'summary';
 type AccountMode = 'local' | 'account';
-type TrackStatus = 'following' | 'watchlist' | 'paused';
 
 type CategoryConfig = {
   id: string;
@@ -57,20 +65,10 @@ type TrackedItem = {
   rationale?: string;
   preferences?: string[];
   radius?: string;
+  sourceIds?: SourceIds;
 };
 
-type BriefingItem = {
-  id: string;
-  category: string;
-  title: string;
-  detail: string;
-  priority: 'high' | 'upcoming' | 'news' | 'recommendation';
-  action: string;
-  href?: string;
-  relatedItems?: string[];
-  source?: string;
-  sourceStatus?: string;
-};
+type BriefingItem = RadarSignal;
 
 const STORAGE_KEY = 'radar-local-profile-v1';
 const radii = ['25', '50', '100', '250', '500'];
@@ -366,8 +364,16 @@ const alertGroups = [
     options: ['Release dates', 'DLC', 'Updates', 'Patches', 'Betas', 'Server outages'],
   },
   {
+    name: 'Podcasts',
+    options: ['New episodes', 'Guest appearances', 'Live events', 'Live events near me', 'Spotify links', 'YouTube links', 'Apple Podcasts links'],
+  },
+  {
     name: 'Products',
     options: ['Price drops', 'Restocks', 'New versions', 'Recalls', 'Availability'],
+  },
+  {
+    name: 'Local Events',
+    options: ['Events near me', 'Festivals', 'Air shows', 'Car shows', 'Fairs', 'Add to calendar'],
   },
   {
     name: 'Radar Features',
@@ -379,37 +385,74 @@ const briefingItems: BriefingItem[] = [
   {
     id: 'metallica-chicago',
     category: 'Music',
+    interestName: 'Metallica',
+    signalType: 'tour_date',
     title: 'Metallica announced a Chicago show',
-    detail: 'Presale opens tomorrow at 10:00 AM. Tickets are expected to move quickly.',
+    description: 'Presale opens tomorrow at 10:00 AM. Tickets are expected to move quickly.',
+    date: new Date().toISOString(),
+    location: 'Chicago, IL',
     priority: 'high',
-    action: 'Buy Tickets',
+    source: 'Ticketmaster / Bandsintown',
+    actions: [
+      { label: 'Ticketmaster', url: 'https://www.ticketmaster.com/search?q=Metallica%20Chicago', type: 'tickets' },
+      buildCalendarAction({
+        title: 'Metallica announced a Chicago show',
+        description: 'Presale opens tomorrow at 10:00 AM.',
+        date: new Date().toISOString(),
+        location: 'Chicago, IL',
+      }),
+    ],
     relatedItems: ['Metallica'],
   },
   {
     id: 'nate-podcast',
     category: 'Comedians',
+    interestName: 'Nate Bargatze',
+    signalType: 'podcast_appearance',
     title: 'Nate Bargatze appeared on SmartLess',
-    detail: 'A new interview episode is available on Spotify, YouTube, and Apple Podcasts.',
+    description: 'A new interview episode is available on Spotify, YouTube, and Apple Podcasts.',
+    date: new Date().toISOString(),
     priority: 'news',
-    action: 'Listen',
+    source: 'Spotify / Apple Podcasts / YouTube',
+    actions: [
+      { label: 'Spotify', url: 'https://open.spotify.com/search/Nate%20Bargatze%20SmartLess', type: 'listen' },
+      { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=Nate%20Bargatze%20SmartLess', type: 'watch' },
+      { label: 'Apple Podcasts', url: 'https://podcasts.apple.com/search?term=Nate%20Bargatze%20SmartLess', type: 'listen' },
+    ],
     relatedItems: ['Nate Bargatze'],
   },
   {
     id: 'fantastic-four',
     category: 'Movies',
+    interestName: 'Fantastic Four',
+    signalType: 'showtime',
     title: 'Fantastic Four tickets are available',
-    detail: 'Nearby theaters added evening showtimes for opening weekend.',
+    description: 'Nearby theaters added evening showtimes for opening weekend.',
+    date: new Date().toISOString(),
+    location: 'Near your saved location',
     priority: 'upcoming',
-    action: 'View Showtimes',
+    source: 'TMDB / Theater showtimes',
+    actions: [
+      { label: 'Showtimes', url: 'https://www.google.com/search?q=Fantastic%20Four%20showtimes%20near%20me', type: 'details' },
+      { label: 'Trailer', url: 'https://www.youtube.com/results?search_query=Fantastic%20Four%20trailer', type: 'trailer' },
+      { label: 'Streaming', url: 'https://www.google.com/search?q=Fantastic%20Four%20streaming', type: 'streaming' },
+    ],
     relatedItems: ['Fantastic Four'],
   },
   {
     id: 'fortnite-patch',
     category: 'Video Games',
+    interestName: 'Fortnite',
+    signalType: 'patch_notes',
     title: 'Fortnite patch released',
-    detail: 'Balance changes, new event quests, and outage notes are live.',
+    description: 'Balance changes, new event quests, and outage notes are live.',
+    date: new Date().toISOString(),
     priority: 'news',
-    action: 'Read Patch Notes',
+    source: 'Epic / Publisher feeds',
+    actions: [
+      { label: 'Patch Notes', url: 'https://www.google.com/search?q=Fortnite%20patch%20notes', type: 'patch-notes' },
+      { label: 'Store Page', url: 'https://www.google.com/search?q=Fortnite%20store%20page', type: 'store' },
+    ],
     relatedItems: ['Fortnite'],
   },
 ];
@@ -435,73 +478,7 @@ const recommendations = [
   },
 ];
 
-const nearMeDiscoveries = [
-  {
-    category: 'Music',
-    title: 'Summer amphitheater concert series',
-    detail: 'A nearby outdoor concert series matches your music interests, but is not already on your Radar.',
-    action: 'View Nearby Shows',
-    href: 'https://www.ticketmaster.com/search?q=concerts%20near%20me',
-    relatedCategories: ['Music'],
-    source: 'Ticketmaster / Bandsintown',
-  },
-  {
-    category: 'Comedians',
-    title: 'Weekend comedy club lineup',
-    detail: 'Local comedy shows are coming up near you based on your comedy selections.',
-    action: 'View Comedy Shows',
-    href: 'https://www.ticketmaster.com/search?q=comedy%20near%20me',
-    relatedCategories: ['Comedians', 'Podcasts'],
-    source: 'Ticketmaster / Venue calendars',
-  },
-  {
-    category: 'Local Events',
-    title: 'Food truck festival downtown',
-    detail: 'A food festival is happening nearby and may fit your local event interests.',
-    action: 'View Event',
-    href: 'https://www.google.com/search?q=food%20festival%20near%20me',
-    relatedCategories: ['Local Events'],
-    source: 'Local event feeds',
-  },
-  {
-    category: 'Sports',
-    title: 'Minor league baseball homestand',
-    detail: 'A nearby sports event may be relevant even though this team is not on your Radar yet.',
-    action: 'View Tickets',
-    href: 'https://www.ticketmaster.com/search?q=sports%20near%20me',
-    relatedCategories: ['Sports'],
-    source: 'Ticketmaster / Team calendars',
-  },
-  {
-    category: 'Movies',
-    title: 'Retro movie night nearby',
-    detail: 'A theater event near you matches your movie interests without being one of your tracked titles.',
-    action: 'View Showtimes',
-    href: 'https://www.google.com/search?q=movie%20showtimes%20near%20me',
-    relatedCategories: ['Movies'],
-    source: 'Theater showtimes',
-  },
-  {
-    category: 'Authors / Books',
-    title: 'Local author signing',
-    detail: 'A signing event near you may match your book interests and is not already tracked.',
-    action: 'View Signing',
-    href: 'https://www.google.com/search?q=author%20signing%20near%20me',
-    relatedCategories: ['Authors / Books'],
-    source: 'Bookstore event feeds',
-  },
-  {
-    category: 'YouTubers / Creators',
-    title: 'Creator meetup nearby',
-    detail: 'A creator-focused event near you may fit your creator selections.',
-    action: 'View Event',
-    href: 'https://www.google.com/search?q=creator%20meetup%20near%20me',
-    relatedCategories: ['YouTubers / Creators'],
-    source: 'Creator / venue feeds',
-  },
-];
-
-const services = ['Spotify', 'Apple Music', 'YouTube', 'Netflix', 'Disney+', 'Prime Video', 'Hulu', 'Steam', 'Xbox', 'PlayStation', 'Nintendo'];
+const services = ['Spotify', 'YouTube', 'Apple Podcasts', 'Netflix', 'Disney+', 'Prime Video', 'Hulu', 'Steam', 'Xbox', 'PlayStation'];
 
 const defaultSelection = (): CategorySelection => ({
   genres: [],
@@ -765,6 +742,7 @@ function App() {
         name,
         preferences: selection.preferences,
         radius: category.location ? selection.radius : undefined,
+        sourceIds: buildMockSourceIds(category.name, name),
         status: 'following' as TrackStatus,
       }));
     });
@@ -1430,6 +1408,7 @@ function DashboardScreen({
             onAddRecommendation={onAddRecommendation}
           />
         )}
+        {activeTab === 'nearMe' && <NearMeTab trackedItems={trackedItems} />}
         {activeTab === 'alerts' && (
           <AlertsTab
             selectedAlerts={selectedAlerts}
@@ -1459,10 +1438,27 @@ function HomeTab({
   const personalizedItems = uniqueBriefingItems([...selectedBriefingItems, ...integrationItems]);
   const highPriority = personalizedItems.filter((item) => item.priority === 'high');
   const upcoming = personalizedItems.filter((item) => item.priority === 'upcoming');
-  const news = personalizedItems.filter((item) => item.priority === 'news');
+  const newReleases = personalizedItems.filter((item) =>
+    ['new_episode', 'patch_or_release', 'product_availability', 'showtime'].includes(item.signalType),
+  );
+  const nearMeItems = mockNearMeSignalsForInterests(trackedItems);
   const visibleRecommendations = recommendations.filter((item) =>
     item.requiresAny.some((requiredItem) => selectedNames.has(requiredItem.toLowerCase())),
   );
+  const recommendationSignals: RadarSignal[] = visibleRecommendations.map((item) => ({
+    id: `recommendation-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    category: 'Recommendations',
+    interestName: item.title,
+    signalType: 'recommendation',
+    title: item.title,
+    description: item.detail,
+    date: new Date().toISOString(),
+    priority: 'recommendation',
+    source: 'Radar recommendation engine',
+    actions: [
+      { label: item.action, url: `https://www.google.com/search?q=${encodeURIComponent(item.title)}`, type: 'details' },
+    ],
+  }));
 
   return (
     <div className="tab-panel">
@@ -1509,8 +1505,20 @@ function HomeTab({
         ))}
       </DashboardSection>
 
-      <DashboardSection title="News" icon={<Bell size={18} />}>
-        {news.map((item) => (
+      <DashboardSection title="New Releases" icon={<Bell size={18} />}>
+        {newReleases.map((item) => (
+          <NotificationCard compact item={item} key={item.id} />
+        ))}
+      </DashboardSection>
+
+      <DashboardSection title="Near Me" icon={<MapPin size={18} />}>
+        {nearMeItems.length === 0 && (
+          <div className="recommendation-card">
+            <strong>No nearby discoveries yet</strong>
+            <p>Radar will surface nearby concerts, showtimes, festivals, signings, sports, and creator events related to your interests.</p>
+          </div>
+        )}
+        {nearMeItems.map((item) => (
           <NotificationCard compact item={item} key={item.id} />
         ))}
       </DashboardSection>
@@ -1522,14 +1530,8 @@ function HomeTab({
             <p>Radar will generate recommendations from the categories and interests you selected.</p>
           </div>
         )}
-        {visibleRecommendations.map((item) => (
-          <div className="recommendation-card" key={item.title}>
-            <strong>{item.title}</strong>
-            <p>{item.detail}</p>
-            <button className="secondary-button compact" type="button">
-              {item.action}
-            </button>
-          </div>
+        {recommendationSignals.map((item) => (
+          <NotificationCard compact item={item} key={item.id} />
         ))}
       </DashboardSection>
     </div>
@@ -1548,26 +1550,7 @@ function detailForTrackedItem(item: TrackedItem) {
 }
 
 function buildIntegrationUpdates(trackedItems: TrackedItem[]): BriefingItem[] {
-  return trackedItems
-    .filter((item) => item.status !== 'paused')
-    .slice(0, 8)
-    .map((item) => {
-      const source = providerSourceForCategory(item.category);
-      const href = providerLinkForItem(item);
-      const priority = isInPersonCategory(item.category) ? 'upcoming' : 'news';
-
-      return {
-        id: `integration-${item.id}`,
-        category: item.category,
-        title: integrationTitleForItem(item),
-        detail: integrationDetailForItem(item),
-        priority,
-        action: actionForCategory(item.category),
-        href,
-        source,
-        sourceStatus: 'Provider-ready',
-      };
-    });
+  return mockSignalsForInterests(trackedItems);
 }
 
 function integrationTitleForItem(item: TrackedItem) {
@@ -1717,18 +1700,7 @@ function isInPersonCategory(category: string) {
 }
 
 function buildNearMeDiscoveries(trackedItems: TrackedItem[]) {
-  const trackedCategories = new Set(trackedItems.map((item) => item.category));
-  const trackedNames = new Set(trackedItems.map((item) => item.name.toLowerCase()));
-
-  if (trackedCategories.size === 0) {
-    return [];
-  }
-
-  return nearMeDiscoveries.filter((item) => {
-    const matchesCategory = item.relatedCategories.some((category) => trackedCategories.has(category));
-    const alreadyTracked = trackedNames.has(item.title.toLowerCase());
-    return matchesCategory && !alreadyTracked;
-  });
+  return mockNearMeSignalsForInterests(trackedItems);
 }
 
 function actionForCategory(category: string) {
@@ -1784,9 +1756,14 @@ function NotificationCard({ compact = false, item }: { compact?: boolean; item: 
     <article className={`notification-card ${compact ? 'compact-card' : ''}`}>
       <div>
         <span className={`priority-dot ${item.priority}`} />
-        <p className="notification-category">{item.category}</p>
+        <p className="notification-category">{item.category} • {item.signalType.replace(/_/g, ' ')}</p>
         <h3>{item.title}</h3>
-        <p>{item.detail}</p>
+        <p>{item.description}</p>
+        {(item.date || item.location) && (
+          <p className="source-line">
+            {new Date(item.date).toLocaleDateString()} {item.location ? `• ${item.location}` : ''}
+          </p>
+        )}
         {item.source && (
           <p className="source-line">
             {item.sourceStatus ? `${item.sourceStatus}: ` : ''}
@@ -1794,17 +1771,14 @@ function NotificationCard({ compact = false, item }: { compact?: boolean; item: 
           </p>
         )}
       </div>
-      {item.href ? (
-        <a className="action-button" href={item.href} rel="noreferrer" target="_blank">
-          {actionIcon(item.action)}
-          {item.action}
-        </a>
-      ) : (
-        <button className="action-button" type="button">
-          {actionIcon(item.action)}
-          {item.action}
-        </button>
-      )}
+      <div className="signal-actions">
+        {item.actions.map((action) => (
+          <a className="action-button" href={action.url} key={`${item.id}-${action.label}`} rel="noreferrer" target="_blank">
+            {actionIcon(action.label)}
+            {action.label}
+          </a>
+        ))}
+      </div>
     </article>
   );
 }
@@ -1981,16 +1955,33 @@ function DiscoverTab({
           </div>
         )}
         {nearbyDiscoveries.map((item) => (
-          <article className="recommendation-card large" key={item.title}>
-            <p className="notification-category">{item.category}</p>
-            <strong>{item.title}</strong>
-            <p>{item.detail}</p>
-            <p className="source-line">Discovery source: {item.source}</p>
-            <a className="action-button" href={item.href} rel="noreferrer" target="_blank">
-              <Ticket size={15} aria-hidden="true" />
-              {item.action}
-            </a>
-          </article>
+          <NotificationCard compact item={item} key={item.id} />
+        ))}
+      </DashboardSection>
+    </div>
+  );
+}
+
+function NearMeTab({ trackedItems }: { trackedItems: TrackedItem[] }) {
+  const nearMeSignals = mockNearMeSignalsForInterests(trackedItems);
+
+  return (
+    <div className="tab-panel">
+      <ScreenHeader
+        kicker="Location-based discovery"
+        title="Near Me"
+        description="Discover concerts, comedy shows, showtimes, sports, festivals, air shows, car shows, fairs, creator events, and author signings related to your selections."
+      />
+
+      <DashboardSection title="Happening near you" icon={<MapPin size={18} />}>
+        {nearMeSignals.length === 0 && (
+          <div className="recommendation-card">
+            <strong>No nearby discoveries yet</strong>
+            <p>Add in-person interests and a location radius to find related things that are not already on your Radar.</p>
+          </div>
+        )}
+        {nearMeSignals.map((signal) => (
+          <NotificationCard compact item={signal} key={signal.id} />
         ))}
       </DashboardSection>
     </div>
@@ -2094,7 +2085,18 @@ function SettingsTab() {
       <section className="settings-section">
         <h2>Location settings</h2>
         <div className="settings-grid">
-          {['Current location', 'Multiple locations', 'Travel mode'].map((option) => (
+          {['Home location', 'Default radius: 50 miles', 'Multiple saved locations'].map((option) => (
+            <button className="setting-card" key={option} type="button">
+              {option}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h2>Sound settings</h2>
+        <div className="settings-grid">
+          {['Sonar Ping', 'Radar Sweep', 'Silent'].map((option) => (
             <button className="setting-card" key={option} type="button">
               {option}
             </button>
@@ -2121,17 +2123,27 @@ function SettingsTab() {
         </div>
       </section>
 
-      <div className="settings-grid">
-        <button className="setting-card" type="button">
-          Sound settings
-        </button>
-        <button className="setting-card" type="button">
-          Import / export
-        </button>
-        <button className="setting-card" type="button">
-          Theme options
-        </button>
-      </div>
+      <section className="settings-section">
+        <h2>Import / export interests</h2>
+        <div className="settings-grid">
+          {['Import interests', 'Export interests', 'Backup local profile'].map((option) => (
+            <button className="setting-card" key={option} type="button">
+              {option}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h2>Theme options</h2>
+        <div className="settings-grid">
+          {['Radar Dark', 'High Contrast', 'Reduced Glow'].map((option) => (
+            <button className="setting-card" key={option} type="button">
+              {option}
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -2147,6 +2159,7 @@ function BottomNavigation({
     { id: 'home', label: 'Home', icon: <HomeIcon size={18} /> },
     { id: 'radar', label: 'Radar', icon: <RadarIcon size={18} /> },
     { id: 'discover', label: 'Discover', icon: <Compass size={18} /> },
+    { id: 'nearMe', label: 'Near Me', icon: <MapPin size={18} /> },
     { id: 'alerts', label: 'Alerts', icon: <Bell size={18} /> },
     { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
   ];
