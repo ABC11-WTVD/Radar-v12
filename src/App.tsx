@@ -23,6 +23,7 @@ import {
 import {
   buildCalendarAction,
   buildMockSourceIds,
+  createSignal,
   mockNearMeSignalsForInterests,
   mockSignalsForInterests,
   type RadarSignal,
@@ -69,10 +70,24 @@ type TrackedItem = {
 };
 
 type BriefingItem = RadarSignal;
+type SavedLocation = {
+  id: string;
+  name: string;
+  radius: string;
+  isPrimary: boolean;
+};
+type RadarSettings = {
+  notificationFrequency: 'Immediate' | 'Daily Digest' | 'Weekly Digest';
+  sound: 'Sonar Ping' | 'Radar Sweep' | 'Silent';
+  theme: 'Radar Dark' | 'Radar Dark Green' | 'High Contrast';
+  connectedServices: string[];
+  locations: SavedLocation[];
+};
 type PersistedRadarProfile = {
   accountMode?: AccountMode;
   completedCategoryIds?: string[];
   hasOpenedDashboard?: boolean;
+  settings?: RadarSettings;
   selectedAlerts?: string[];
   selectedCategoryIds?: string[];
   selections?: Record<string, CategorySelection>;
@@ -82,6 +97,18 @@ type PersistedRadarProfile = {
 
 const STORAGE_KEY = 'radar-local-profile-v1';
 const radii = ['25', '50', '100', '250', '500'];
+const defaultSettings: RadarSettings = {
+  notificationFrequency: 'Daily Digest',
+  sound: 'Sonar Ping',
+  theme: 'Radar Dark',
+  connectedServices: [],
+  locations: [
+    { id: 'home-milwaukee', name: 'Milwaukee', radius: '50', isPrimary: true },
+    { id: 'also-chicago', name: 'Chicago', radius: '100', isPrimary: false },
+    { id: 'also-nashville', name: 'Nashville', radius: '100', isPrimary: false },
+    { id: 'also-charlotte', name: 'Charlotte', radius: '100', isPrimary: false },
+  ],
+};
 
 const categories: CategoryConfig[] = [
   {
@@ -399,16 +426,17 @@ const briefingItems: BriefingItem[] = [
     signalType: 'tour_date',
     title: 'Metallica announced a Chicago show',
     description: 'Presale opens tomorrow at 10:00 AM. Tickets are expected to move quickly.',
-    date: new Date().toISOString(),
+    eventDate: new Date().toISOString(),
     location: 'Chicago, IL',
     priority: 'high',
     source: 'Ticketmaster / Bandsintown',
+    status: 'new',
     actions: [
       { label: 'Ticketmaster', url: 'https://www.ticketmaster.com/search?q=Metallica%20Chicago', type: 'tickets' },
       buildCalendarAction({
         title: 'Metallica announced a Chicago show',
         description: 'Presale opens tomorrow at 10:00 AM.',
-        date: new Date().toISOString(),
+        eventDate: new Date().toISOString(),
         location: 'Chicago, IL',
       }),
     ],
@@ -421,9 +449,10 @@ const briefingItems: BriefingItem[] = [
     signalType: 'podcast_appearance',
     title: 'Nate Bargatze appeared on SmartLess',
     description: 'A new interview episode is available on Spotify, YouTube, and Apple Podcasts.',
-    date: new Date().toISOString(),
+    eventDate: new Date().toISOString(),
     priority: 'news',
     source: 'Spotify / Apple Podcasts / YouTube',
+    status: 'new',
     actions: [
       { label: 'Spotify', url: 'https://open.spotify.com/search/Nate%20Bargatze%20SmartLess', type: 'listen' },
       { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=Nate%20Bargatze%20SmartLess', type: 'watch' },
@@ -438,10 +467,11 @@ const briefingItems: BriefingItem[] = [
     signalType: 'showtime',
     title: 'Fantastic Four tickets are available',
     description: 'Nearby theaters added evening showtimes for opening weekend.',
-    date: new Date().toISOString(),
+    eventDate: new Date().toISOString(),
     location: 'Near your saved location',
     priority: 'upcoming',
     source: 'TMDB / Theater showtimes',
+    status: 'new',
     actions: [
       { label: 'Showtimes', url: 'https://www.google.com/search?q=Fantastic%20Four%20showtimes%20near%20me', type: 'details' },
       { label: 'Trailer', url: 'https://www.youtube.com/results?search_query=Fantastic%20Four%20trailer', type: 'trailer' },
@@ -456,9 +486,10 @@ const briefingItems: BriefingItem[] = [
     signalType: 'patch_notes',
     title: 'Fortnite patch released',
     description: 'Balance changes, new event quests, and outage notes are live.',
-    date: new Date().toISOString(),
+    eventDate: new Date().toISOString(),
     priority: 'news',
     source: 'Epic / Publisher feeds',
+    status: 'new',
     actions: [
       { label: 'Patch Notes', url: 'https://www.google.com/search?q=Fortnite%20patch%20notes', type: 'patch-notes' },
       { label: 'Store Page', url: 'https://www.google.com/search?q=Fortnite%20store%20page', type: 'store' },
@@ -488,7 +519,7 @@ const recommendations = [
   },
 ];
 
-const services = ['Spotify', 'YouTube', 'Apple Podcasts', 'Netflix', 'Disney+', 'Prime Video', 'Hulu', 'Steam', 'Xbox', 'PlayStation'];
+const services = ['Spotify', 'Apple Music', 'YouTube', 'Apple Podcasts', 'Netflix', 'Disney+', 'Prime Video', 'Hulu', 'Steam', 'Xbox', 'PlayStation', 'Nintendo'];
 
 const defaultSelection = (): CategorySelection => ({
   genres: [],
@@ -543,6 +574,7 @@ function App() {
   const [hasOpenedDashboard, setHasOpenedDashboard] = useState(Boolean(storedProfile.hasOpenedDashboard));
   const [selections, setSelections] = useState<Record<string, CategorySelection>>(storedProfile.selections ?? {});
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>(storedProfile.selectedAlerts ?? ['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
+  const [settings, setSettings] = useState<RadarSettings>(storedProfile.settings ?? defaultSettings);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>(storedProfile.trackedItems ?? []);
   const [authMessage, setAuthMessage] = useState('');
 
@@ -616,12 +648,13 @@ function App() {
       accountMode,
       completedCategoryIds,
       hasOpenedDashboard,
+      settings,
       selectedAlerts,
       selectedCategoryIds,
       selections,
       trackedItems,
     });
-  }, [accountMode, completedCategoryIds, hasOpenedDashboard, selectedAlerts, selectedCategoryIds, selections, trackedItems]);
+  }, [accountMode, completedCategoryIds, hasOpenedDashboard, settings, selectedAlerts, selectedCategoryIds, selections, trackedItems]);
 
   const updateSelection = (categoryId: string, updater: (current: CategorySelection) => CategorySelection) => {
     setSelections((current) => ({
@@ -823,6 +856,20 @@ function App() {
     setTrackedItems((current) => current.filter((item) => item.id !== itemId));
   };
 
+  const updateSettings = (updater: (current: RadarSettings) => RadarSettings) => {
+    setSettings((current) => updater(current));
+  };
+
+  const resetRadar = () => {
+    setSelectedCategoryIds([]);
+    setCompletedCategoryIds([]);
+    setSelections({});
+    setTrackedItems([]);
+    setSelectedAlerts([]);
+    setHasOpenedDashboard(true);
+    setDashboardTab('home');
+  };
+
   const addRecommendation = (title: string, status: TrackStatus) => {
     const item: TrackedItem = {
       id: `recommendation-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
@@ -882,11 +929,14 @@ function App() {
           groupedTrackedItems={groupedTrackedItems}
           selectedAlerts={selectedAlerts}
           selectedCategoryNames={selectedCategoryNames}
+          settings={settings}
           trackedItems={visibleTrackedItems}
           onAddRecommendation={addRecommendation}
           onAlertToggle={toggleAlert}
           onManageRadars={manageRadars}
           onRemoveTrackedItem={removeTrackedItem}
+          onResetRadar={resetRadar}
+          onSettingsChange={updateSettings}
           onTabChange={setDashboardTab}
           onTrackedStatusChange={updateTrackedItem}
         />
@@ -1405,11 +1455,14 @@ function DashboardScreen({
   groupedTrackedItems,
   selectedAlerts,
   selectedCategoryNames,
+  settings,
   trackedItems,
   onAddRecommendation,
   onAlertToggle,
   onManageRadars,
   onRemoveTrackedItem,
+  onResetRadar,
+  onSettingsChange,
   onTabChange,
   onTrackedStatusChange,
 }: {
@@ -1417,11 +1470,14 @@ function DashboardScreen({
   groupedTrackedItems: Record<string, TrackedItem[]>;
   selectedAlerts: string[];
   selectedCategoryNames: string[];
+  settings: RadarSettings;
   trackedItems: TrackedItem[];
   onAddRecommendation: (title: string, status: TrackStatus) => void;
   onAlertToggle: (option: string) => void;
   onManageRadars: () => void;
   onRemoveTrackedItem: (itemId: string) => void;
+  onResetRadar: () => void;
+  onSettingsChange: (updater: (current: RadarSettings) => RadarSettings) => void;
   onTabChange: (tab: DashboardTab) => void;
   onTrackedStatusChange: (itemId: string, status: TrackStatus) => void;
 }) {
@@ -1456,7 +1512,13 @@ function DashboardScreen({
             onAlertToggle={onAlertToggle}
           />
         )}
-        {activeTab === 'settings' && <SettingsTab />}
+        {activeTab === 'settings' && (
+          <SettingsTab
+            settings={settings}
+            onResetRadar={onResetRadar}
+            onSettingsChange={onSettingsChange}
+          />
+        )}
       </div>
       <BottomNavigation activeTab={activeTab} onTabChange={onTabChange} />
     </section>
@@ -1485,14 +1547,14 @@ function HomeTab({
   const visibleRecommendations = recommendations.filter((item) =>
     item.requiresAny.some((requiredItem) => selectedNames.has(requiredItem.toLowerCase())),
   );
-  const recommendationSignals: RadarSignal[] = visibleRecommendations.map((item) => ({
+  const recommendationSignals: RadarSignal[] = visibleRecommendations.map((item) => createSignal({
     id: `recommendation-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
     category: 'Recommendations',
     interestName: item.title,
     signalType: 'recommendation',
     title: item.title,
     description: item.detail,
-    date: new Date().toISOString(),
+    eventDate: new Date().toISOString(),
     priority: 'recommendation',
     source: 'Radar recommendation engine',
     actions: [
@@ -1799,9 +1861,9 @@ function NotificationCard({ compact = false, item }: { compact?: boolean; item: 
         <p className="notification-category">{item.category} • {item.signalType.replace(/_/g, ' ')}</p>
         <h3>{item.title}</h3>
         <p>{item.description}</p>
-        {(item.date || item.location) && (
+        {(item.eventDate || item.location) && (
           <p className="source-line">
-            {new Date(item.date).toLocaleDateString()} {item.location ? `• ${item.location}` : ''}
+            {new Date(item.eventDate).toLocaleDateString()} {item.location ? `• ${item.location}` : ''}
           </p>
         )}
         {item.source && (
@@ -2102,7 +2164,70 @@ function AlertsTab({
   );
 }
 
-function SettingsTab() {
+function SettingsTab({
+  settings,
+  onResetRadar,
+  onSettingsChange,
+}: {
+  settings: RadarSettings;
+  onResetRadar: () => void;
+  onSettingsChange: (updater: (current: RadarSettings) => RadarSettings) => void;
+}) {
+  const [newLocationName, setNewLocationName] = useState('');
+  const toggleConnectedService = (service: string) => {
+    onSettingsChange((current) => ({
+      ...current,
+      connectedServices: current.connectedServices.includes(service)
+        ? current.connectedServices.filter((item) => item !== service)
+        : [...current.connectedServices, service],
+    }));
+  };
+  const addLocation = () => {
+    const name = newLocationName.trim();
+    if (!name) {
+      return;
+    }
+
+    onSettingsChange((current) => ({
+      ...current,
+      locations: [
+        ...current.locations,
+        {
+          id: `location-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+          name,
+          radius: '50',
+          isPrimary: current.locations.length === 0,
+        },
+      ],
+    }));
+    setNewLocationName('');
+  };
+  const removeLocation = (locationId: string) => {
+    onSettingsChange((current) => {
+      const locations = current.locations.filter((location) => location.id !== locationId);
+      if (!locations.some((location) => location.isPrimary) && locations[0]) {
+        locations[0] = { ...locations[0], isPrimary: true };
+      }
+
+      return { ...current, locations };
+    });
+  };
+  const setPrimaryLocation = (locationId: string) => {
+    onSettingsChange((current) => ({
+      ...current,
+      locations: current.locations.map((location) => ({
+        ...location,
+        isPrimary: location.id === locationId,
+      })),
+    }));
+  };
+  const updateLocationRadius = (locationId: string, radius: string) => {
+    onSettingsChange((current) => ({
+      ...current,
+      locations: current.locations.map((location) => location.id === locationId ? { ...location, radius } : location),
+    }));
+  };
+
   return (
     <div className="tab-panel">
       <ScreenHeader
@@ -2115,7 +2240,12 @@ function SettingsTab() {
         <h2>Notification frequency</h2>
         <div className="settings-grid">
           {['Immediate', 'Daily Digest', 'Weekly Digest'].map((option) => (
-            <button className="setting-card" key={option} type="button">
+            <button
+              className={`setting-card ${settings.notificationFrequency === option ? 'active-setting' : ''}`}
+              key={option}
+              type="button"
+              onClick={() => onSettingsChange((current) => ({ ...current, notificationFrequency: option as RadarSettings['notificationFrequency'] }))}
+            >
               {option}
             </button>
           ))}
@@ -2124,12 +2254,32 @@ function SettingsTab() {
 
       <section className="settings-section">
         <h2>Location settings</h2>
-        <div className="settings-grid">
-          {['Home location', 'Default radius: 50 miles', 'Multiple saved locations'].map((option) => (
-            <button className="setting-card" key={option} type="button">
-              {option}
-            </button>
+        <div className="location-list">
+          {settings.locations.map((location) => (
+            <article className="setting-card location-card" key={location.id}>
+              <strong>{location.isPrimary ? 'Home: ' : 'Also Track: '}{location.name}</strong>
+              <span>Radius: {location.radius} miles</span>
+              <div className="tracked-actions">
+                {radii.map((radius) => (
+                  <button key={radius} type="button" onClick={() => updateLocationRadius(location.id, radius)}>
+                    {radius}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setPrimaryLocation(location.id)}>Set primary</button>
+                <button type="button" onClick={() => removeLocation(location.id)}>Remove</button>
+              </div>
+            </article>
           ))}
+          <form className="custom-entry-card" onSubmit={(event) => { event.preventDefault(); addLocation(); }}>
+            <label>
+              Add location
+              <span>Track nearby signals in another city.</span>
+            </label>
+            <div className="custom-entry-row">
+              <input value={newLocationName} placeholder="City or place" onChange={(event) => setNewLocationName(event.target.value)} />
+              <button className="secondary-button compact" type="submit">Add</button>
+            </div>
+          </form>
         </div>
       </section>
 
@@ -2137,7 +2287,12 @@ function SettingsTab() {
         <h2>Sound settings</h2>
         <div className="settings-grid">
           {['Sonar Ping', 'Radar Sweep', 'Silent'].map((option) => (
-            <button className="setting-card" key={option} type="button">
+            <button
+              className={`setting-card ${settings.sound === option ? 'active-setting' : ''}`}
+              key={option}
+              type="button"
+              onClick={() => onSettingsChange((current) => ({ ...current, sound: option as RadarSettings['sound'] }))}
+            >
               {option}
             </button>
           ))}
@@ -2148,7 +2303,12 @@ function SettingsTab() {
         <h2>Connected services</h2>
         <div className="service-grid">
           {services.map((service) => (
-            <button className="service-chip" key={service} type="button">
+            <button
+              className={`service-chip ${settings.connectedServices.includes(service) ? 'active-setting' : ''}`}
+              key={service}
+              type="button"
+              onClick={() => toggleConnectedService(service)}
+            >
               {service}
             </button>
           ))}
@@ -2166,19 +2326,27 @@ function SettingsTab() {
       <section className="settings-section">
         <h2>Import / export interests</h2>
         <div className="settings-grid">
-          {['Import interests', 'Export interests', 'Backup local profile'].map((option) => (
+          {['Export Interests', 'Import Interests'].map((option) => (
             <button className="setting-card" key={option} type="button">
               {option}
             </button>
           ))}
+          <button className="setting-card danger-setting" type="button" onClick={onResetRadar}>
+            Reset Radar
+          </button>
         </div>
       </section>
 
       <section className="settings-section">
         <h2>Theme options</h2>
         <div className="settings-grid">
-          {['Radar Dark', 'High Contrast', 'Reduced Glow'].map((option) => (
-            <button className="setting-card" key={option} type="button">
+          {['Radar Dark', 'Radar Dark Green', 'High Contrast'].map((option) => (
+            <button
+              className={`setting-card ${settings.theme === option ? 'active-setting' : ''}`}
+              key={option}
+              type="button"
+              onClick={() => onSettingsChange((current) => ({ ...current, theme: option as RadarSettings['theme'] }))}
+            >
               {option}
             </button>
           ))}

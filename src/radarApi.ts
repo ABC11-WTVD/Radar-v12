@@ -23,7 +23,7 @@ export type RadarInterest = {
 export type SignalAction = {
   label: string;
   url: string;
-  type: 'tickets' | 'calendar' | 'listen' | 'watch' | 'details' | 'store' | 'product' | 'price-alert' | 'trailer' | 'streaming' | 'patch-notes';
+  type: 'tickets' | 'calendar' | 'ics' | 'listen' | 'watch' | 'details' | 'store' | 'product' | 'price-alert' | 'trailer' | 'streaming' | 'patch-notes';
 };
 
 export type RadarSignal = {
@@ -33,10 +33,11 @@ export type RadarSignal = {
   signalType: string;
   title: string;
   description: string;
-  date: string;
+  eventDate: string;
   location?: string;
   priority: 'high' | 'upcoming' | 'news' | 'recommendation';
   source: string;
+  status: 'new' | 'read' | 'saved' | 'dismissed';
   actions: SignalAction[];
   relatedItems?: string[];
   sourceStatus?: string;
@@ -44,8 +45,28 @@ export type RadarSignal = {
 
 const todayIso = () => new Date().toISOString();
 
-export function buildCalendarAction(signal: Pick<RadarSignal, 'title' | 'description' | 'date' | 'location'>): SignalAction {
-  const startDate = signal.date.replace(/[-:]/g, '').split('.')[0];
+export function createSignal(signal: Omit<RadarSignal, 'status'> & { status?: RadarSignal['status'] }): RadarSignal {
+  return {
+    ...signal,
+    status: signal.status ?? 'new',
+  };
+}
+
+export function renderSignal(signal: RadarSignal) {
+  return {
+    heading: signal.title,
+    meta: `${signal.category} • ${signal.signalType.replace(/_/g, ' ')}`,
+    body: signal.description,
+    actionCount: signal.actions.length,
+  };
+}
+
+export function renderSignalCard(signal: RadarSignal) {
+  return renderSignal(signal);
+}
+
+export function buildCalendarAction(signal: Pick<RadarSignal, 'title' | 'description' | 'eventDate' | 'location'>): SignalAction {
+  const startDate = signal.eventDate.replace(/[-:]/g, '').split('.')[0];
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: signal.title,
@@ -61,6 +82,28 @@ export function buildCalendarAction(signal: Pick<RadarSignal, 'title' | 'descrip
     label: 'Add to Calendar',
     url: `https://calendar.google.com/calendar/render?${params.toString()}`,
     type: 'calendar',
+  };
+}
+
+export function buildIcsAction(signal: Pick<RadarSignal, 'title' | 'description' | 'eventDate' | 'location'>): SignalAction {
+  const startDate = signal.eventDate.replace(/[-:]/g, '').split('.')[0];
+  const icsData = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Radar//Mock Calendar Export//EN',
+    'BEGIN:VEVENT',
+    `DTSTART:${startDate}`,
+    `SUMMARY:${signal.title}`,
+    `DESCRIPTION:${signal.description}`,
+    signal.location ? `LOCATION:${signal.location}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\\n');
+
+  return {
+    label: 'ICS Export',
+    url: `data:text/calendar;charset=utf8,${encodeURIComponent(icsData)}`,
+    type: 'ics',
   };
 }
 
@@ -112,13 +155,14 @@ export function signalActionsForInterest(interest: RadarInterest): SignalAction[
     const ticketSignal = {
       title: `${interest.name} event`,
       description: `Radar event for ${interest.name}`,
-      date: todayIso(),
+      eventDate: todayIso(),
       location: interest.radius ? `Within ${interest.radius} miles` : undefined,
     };
 
     return [
       { label: interest.category === 'Music' ? 'Ticketmaster' : 'Details', url: `https://www.ticketmaster.com/search?q=${query}`, type: 'tickets' },
       buildCalendarAction(ticketSignal),
+      buildIcsAction(ticketSignal),
     ];
   }
 
@@ -152,14 +196,14 @@ export function signalActionsForInterest(interest: RadarInterest): SignalAction[
 export function mockSignalsForInterests(interests: RadarInterest[]): RadarSignal[] {
   return interests
     .filter((interest) => interest.status !== 'paused')
-    .map((interest) => ({
+    .map((interest) => createSignal({
       id: `signal-${interest.id}`,
       category: interest.category,
       interestName: interest.name,
       signalType: signalTypeForCategory(interest.category),
       title: signalTitleForInterest(interest),
       description: signalDescriptionForInterest(interest),
-      date: todayIso(),
+      eventDate: todayIso(),
       location: interest.radius ? `Within ${interest.radius} miles` : undefined,
       priority: isInPersonCategory(interest.category) ? 'upcoming' : 'news',
       source: sourceForCategory(interest.category),
@@ -195,7 +239,7 @@ export function mockNearMeSignalsForInterests(interests: RadarInterest[]): Radar
         signalType,
         title,
         description,
-        date: todayIso(),
+        eventDate: todayIso(),
         location: 'Near your saved location',
         priority: 'upcoming' as const,
         source,
@@ -206,8 +250,8 @@ export function mockNearMeSignalsForInterests(interests: RadarInterest[]): Radar
       };
 
       return {
-        ...signal,
-        actions: [...signal.actions, buildCalendarAction(signal)],
+        ...createSignal(signal),
+        actions: [...signal.actions, buildCalendarAction(signal), buildIcsAction(signal)],
       };
     });
 }

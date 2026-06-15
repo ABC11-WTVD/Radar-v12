@@ -22,6 +22,16 @@ Mock frontend functions are in `src/radarApi.ts`:
 - `fetchPodcastData()`
 - `fetchGameData()`
 
+Mock service connector placeholders are in `/services`:
+
+- `ticketmasterService.js`
+- `tmdbService.js`
+- `youtubeService.js`
+- `podcastService.js`
+- `gameService.js`
+
+These service files document the expected provider response shape. In production, equivalent service code should run in the backend, not in the browser.
+
 ## Backend responsibilities
 
 The backend should:
@@ -55,10 +65,11 @@ All dashboard, alert, briefing, and Near Me cards should use this structure:
   signalType,
   title,
   description,
-  date,
+  eventDate,
   location,
   priority,
   source,
+  status,
   actions: [
     { label, url, type }
   ]
@@ -66,3 +77,5 @@ All dashboard, alert, briefing, and Near Me cards should use this structure:
 ```
 
 Calendar support currently uses a mock Google Calendar link generated from signal title, description, date, and location. A backend can later generate `.ics` files or provider-specific calendar links.
+
+The frontend helper layer also exposes `createSignal()`, `renderSignal()`, and `renderSignalCard()` for consistent signal creation and rendering metadata.

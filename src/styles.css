@@ -848,6 +848,33 @@ svg {
   gap: 0.8rem;
 }
 
+.active-setting {
+  border-color: rgba(45, 255, 135, 0.68) !important;
+  background: rgba(45, 255, 135, 0.16) !important;
+  color: var(--notification-green) !important;
+}
+
+.danger-setting {
+  border-color: rgba(255, 92, 92, 0.34);
+  color: var(--alert);
+}
+
+.location-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.location-card {
+  display: grid;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.location-card span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .service-chip {
   border-radius: 999px;
 }
