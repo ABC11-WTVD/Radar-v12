@@ -1,4 +1,14 @@
 export type TrackStatus = 'following' | 'watchlist' | 'paused';
+export type SubscriptionTier = 'free' | 'pro' | 'premium';
+export const DEFAULT_SUBSCRIPTION_TIER: SubscriptionTier = 'premium';
+
+export function hasPro(tier: SubscriptionTier) {
+  return tier === 'pro' || tier === 'premium';
+}
+
+export function hasPremium(tier: SubscriptionTier) {
+  return tier === 'premium';
+}
 
 export type SourceIds = {
   ticketmasterId?: string;

@@ -32,6 +32,8 @@ Mock service connector placeholders are in `/services`:
 
 These service files document the expected provider response shape. In production, equivalent service code should run in the backend, not in the browser.
 
+Do not add API keys, provider secrets, Stripe keys, app-store billing secrets, or other credentials to frontend code. Service connectors are mock/front-of-house shape references until backend implementation exists.
+
 ## Backend responsibilities
 
 The backend should:
@@ -79,3 +81,13 @@ All dashboard, alert, briefing, and Near Me cards should use this structure:
 Calendar support currently uses a mock Google Calendar link generated from signal title, description, date, and location. A backend can later generate `.ics` files or provider-specific calendar links.
 
 The frontend helper layer also exposes `createSignal()`, `renderSignal()`, and `renderSignalCard()` for consistent signal creation and rendering metadata.
+
+## Future monetization architecture
+
+The frontend can persist a hidden `subscriptionTier` value for future feature-gating:
+
+- `free`
+- `pro`
+- `premium`
+
+All development users default to `premium` so every feature remains unlocked. Helpers `hasPro()` and `hasPremium()` exist for future business logic only. No pricing, upgrade, subscription, paywall, billing, or purchase UI should be rendered at this stage.

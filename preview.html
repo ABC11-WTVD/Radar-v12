@@ -1025,6 +1025,7 @@
       let selectedPreferences = [];
       let selectedRadius = "50 miles";
       let selectedAlerts = storedPreviewProfile.selectedAlerts || ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+      const subscriptionTier = storedPreviewProfile.subscriptionTier || "premium";
       let trackedStatuses = storedPreviewProfile.trackedStatuses || {};
       let sonarAudioContext = null;
 
@@ -1034,6 +1035,7 @@
           completedSelections,
           hasOpenedDashboard,
           selectedAlerts,
+          subscriptionTier,
           trackedStatuses,
           savedAt: new Date().toISOString(),
         }));

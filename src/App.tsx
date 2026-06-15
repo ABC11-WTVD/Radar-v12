@@ -21,13 +21,17 @@ import {
   Zap,
 } from 'lucide-react';
 import {
+  DEFAULT_SUBSCRIPTION_TIER,
   buildCalendarAction,
   buildMockSourceIds,
   createSignal,
+  hasPremium,
+  hasPro,
   mockNearMeSignalsForInterests,
   mockSignalsForInterests,
   type RadarSignal,
   type SourceIds,
+  type SubscriptionTier,
   type TrackStatus,
 } from './radarApi';
 
@@ -91,6 +95,7 @@ type PersistedRadarProfile = {
   selectedAlerts?: string[];
   selectedCategoryIds?: string[];
   selections?: Record<string, CategorySelection>;
+  subscriptionTier?: SubscriptionTier;
   trackedItems?: TrackedItem[];
   savedAt?: string;
 };
@@ -504,18 +509,21 @@ const recommendations = [
     detail: 'Radar found a progressive metal overlap with your selected artists.',
     action: 'Add to Radar',
     requiresAny: ['Tool', 'Pantera'],
+    reason: 'Fans of Tool and Pantera frequently follow Gojira for progressive and heavy metal overlap.',
   },
   {
     title: 'Mastodon',
     detail: 'Similar heavy riffs, tour activity, and high match with your metal preferences.',
     action: 'Watch Quietly',
     requiresAny: ['Tool', 'Pantera', 'Gojira', 'Lamb of God'],
+    reason: 'Mastodon matches your heavy and progressive music cluster and often shares festival/tour audiences.',
   },
   {
     title: 'Lamb of God',
     detail: 'Recommended from your Metallica, Megadeth, and Pantera cluster.',
     action: 'Add to Radar',
     requiresAny: ['Metallica', 'Megadeth', 'Pantera'],
+    reason: 'Thrash and groove metal listeners who follow Metallica, Megadeth, or Pantera often track Lamb of God.',
   },
 ];
 
@@ -575,8 +583,16 @@ function App() {
   const [selections, setSelections] = useState<Record<string, CategorySelection>>(storedProfile.selections ?? {});
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>(storedProfile.selectedAlerts ?? ['Concerts', 'New albums', 'Trailers', 'Updates', 'Daily digest']);
   const [settings, setSettings] = useState<RadarSettings>(storedProfile.settings ?? defaultSettings);
+  const [subscriptionTier] = useState<SubscriptionTier>(storedProfile.subscriptionTier ?? DEFAULT_SUBSCRIPTION_TIER);
   const [trackedItems, setTrackedItems] = useState<TrackedItem[]>(storedProfile.trackedItems ?? []);
   const [authMessage, setAuthMessage] = useState('');
+  const features = useMemo(
+    () => ({
+      pro: hasPro(subscriptionTier),
+      premium: hasPremium(subscriptionTier),
+    }),
+    [subscriptionTier],
+  );
 
   const activeCategory = activeCategoryIndex === null ? null : categories[activeCategoryIndex];
   const activeSelection = activeCategory ? selections[activeCategory.id] ?? defaultSelection() : defaultSelection();
@@ -652,9 +668,10 @@ function App() {
       selectedAlerts,
       selectedCategoryIds,
       selections,
+      subscriptionTier,
       trackedItems,
     });
-  }, [accountMode, completedCategoryIds, hasOpenedDashboard, settings, selectedAlerts, selectedCategoryIds, selections, trackedItems]);
+  }, [accountMode, completedCategoryIds, hasOpenedDashboard, settings, selectedAlerts, selectedCategoryIds, selections, subscriptionTier, trackedItems]);
 
   const updateSelection = (categoryId: string, updater: (current: CategorySelection) => CategorySelection) => {
     setSelections((current) => ({
@@ -2037,6 +2054,10 @@ function DiscoverTab({
           <article className="recommendation-card large" key={item.title}>
             <strong>{item.title}</strong>
             <p>{item.detail}</p>
+            <p className="source-line">
+              Because you follow: {item.requiresAny.filter((requiredItem) => selectedNames.has(requiredItem.toLowerCase())).join(', ')}
+            </p>
+            <p>{item.reason}</p>
             <div className="button-row">
               <button className="primary-button compact" type="button" onClick={() => onAddRecommendation(item.title, 'following')}>
                 Add to Radar
@@ -2066,6 +2087,18 @@ function DiscoverTab({
 
 function NearMeTab({ trackedItems }: { trackedItems: TrackedItem[] }) {
   const nearMeSignals = mockNearMeSignalsForInterests(trackedItems);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [sortMode, setSortMode] = useState<'Soonest' | 'Category'>('Soonest');
+  const nearMeCategories = ['All', ...unique(nearMeSignals.map((signal) => signal.category))];
+  const filteredSignals = nearMeSignals
+    .filter((signal) => categoryFilter === 'All' || signal.category === categoryFilter)
+    .sort((first, second) => {
+      if (sortMode === 'Category') {
+        return first.category.localeCompare(second.category) || first.title.localeCompare(second.title);
+      }
+
+      return new Date(first.eventDate).getTime() - new Date(second.eventDate).getTime();
+    });
 
   return (
     <div className="tab-panel">
@@ -2075,14 +2108,42 @@ function NearMeTab({ trackedItems }: { trackedItems: TrackedItem[] }) {
         description="Discover concerts, comedy shows, showtimes, sports, festivals, air shows, car shows, fairs, creator events, and author signings related to your selections."
       />
 
+      <section className="settings-section">
+        <h2>Filter nearby signals</h2>
+        <div className="filter-bar" aria-label="Near Me category filters">
+          {nearMeCategories.map((category) => (
+            <button
+              className={`filter-chip ${categoryFilter === category ? 'active-setting' : ''}`}
+              key={category}
+              type="button"
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+        <div className="filter-bar" aria-label="Near Me sorting">
+          {(['Soonest', 'Category'] as const).map((option) => (
+            <button
+              className={`filter-chip ${sortMode === option ? 'active-setting' : ''}`}
+              key={option}
+              type="button"
+              onClick={() => setSortMode(option)}
+            >
+              Sort: {option}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <DashboardSection title="Happening near you" icon={<MapPin size={18} />}>
-        {nearMeSignals.length === 0 && (
+        {filteredSignals.length === 0 && (
           <div className="recommendation-card">
             <strong>No nearby discoveries yet</strong>
             <p>Add in-person interests and a location radius to find related things that are not already on your Radar.</p>
           </div>
         )}
-        {nearMeSignals.map((signal) => (
+        {filteredSignals.map((signal) => (
           <NotificationCard compact item={signal} key={signal.id} />
         ))}
       </DashboardSection>
