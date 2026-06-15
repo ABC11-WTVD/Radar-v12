@@ -1,0 +1,1686 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar Preview | Never Miss What Matters</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08131f;
+        --panel: #102235;
+        --card: #17324b;
+        --radar-green: #2dff87;
+        --notification-green: #42ffaa;
+        --warning: #ffb547;
+        --alert: #ff5c5c;
+        --text: #eaf7ff;
+        --muted: #9fc4d9;
+        --line: rgba(234, 247, 255, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(45, 255, 135, 0.16), transparent 22rem),
+          linear-gradient(180deg, #08131f 0%, #091827 100%);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .app {
+        min-height: 100dvh;
+        background:
+          linear-gradient(rgba(45, 255, 135, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(45, 255, 135, 0.025) 1px, transparent 1px);
+        background-size: 26px 26px;
+      }
+
+      .screen {
+        display: none;
+        width: min(100%, 520px);
+        min-height: 100dvh;
+        margin: 0 auto;
+        padding: 1.25rem;
+      }
+
+      .screen.active {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .splash.active {
+        height: 100dvh;
+        justify-content: space-between;
+        overflow: hidden;
+        text-align: center;
+      }
+
+      .eyebrow {
+        margin-bottom: 0.55rem;
+        color: var(--notification-green);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .title {
+        margin-bottom: 0.75rem;
+        font-size: clamp(2.3rem, 12vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.06em;
+      }
+
+      .card,
+      .choice,
+      .briefing,
+      .tracked,
+      .setting {
+        border: 1px solid var(--line);
+        border-radius: 1.35rem;
+        background: rgba(16, 34, 53, 0.88);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+      }
+
+      .radar-orbit {
+        position: relative;
+        width: min(78vw, 330px);
+        aspect-ratio: 1;
+        margin: 4vh auto 0;
+        border: 1px solid rgba(45, 255, 135, 0.3);
+        border-radius: 50%;
+        background:
+          radial-gradient(circle, rgba(45, 255, 135, 0.3) 0 2px, transparent 3px),
+          repeating-radial-gradient(circle, rgba(45, 255, 135, 0.16) 0 1px, transparent 1px 54px);
+        box-shadow:
+          inset 0 0 40px rgba(45, 255, 135, 0.12),
+          0 0 32px rgba(45, 255, 135, 0.22);
+      }
+
+      .radar-orbit::before,
+      .radar-orbit::after {
+        position: absolute;
+        inset: 50% auto auto 0;
+        width: 100%;
+        height: 1px;
+        background: rgba(45, 255, 135, 0.22);
+        content: "";
+      }
+
+      .radar-orbit::after {
+        transform: rotate(90deg);
+      }
+
+      .sweep {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: conic-gradient(from 12deg, rgba(45, 255, 135, 0.45), rgba(45, 255, 135, 0.08), transparent 30%);
+        animation: sweep 7s linear infinite;
+        mask: radial-gradient(circle, transparent 0 8%, #000 9%);
+      }
+
+      .dot {
+        position: absolute;
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 999px;
+        background: var(--notification-green);
+        box-shadow: 0 0 18px rgba(66, 255, 170, 0.85);
+      }
+
+      .dot.one {
+        top: 28%;
+        left: 61%;
+      }
+
+      .dot.two {
+        top: 59%;
+        left: 31%;
+      }
+
+      .dot.three {
+        top: 67%;
+        left: 72%;
+        background: var(--warning);
+      }
+
+      @keyframes sweep {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .primary,
+      .secondary,
+      .ghost,
+      .action,
+      .pill,
+      .nav button {
+        min-height: 3rem;
+        border-radius: 1rem;
+        font-weight: 900;
+      }
+
+      .primary {
+        width: 100%;
+        padding: 0.9rem 1rem;
+        background: linear-gradient(135deg, var(--radar-green), var(--notification-green));
+        color: #03110b;
+      }
+
+      .secondary,
+      .ghost {
+        padding: 0.8rem 1rem;
+        border: 1px solid rgba(66, 255, 170, 0.35);
+        background: rgba(66, 255, 170, 0.1);
+        color: var(--text);
+      }
+
+      .ghost {
+        width: fit-content;
+        border-color: var(--line);
+        background: rgba(234, 247, 255, 0.07);
+      }
+
+      .choices,
+      .list,
+      .grid,
+      .stack {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .choice {
+        display: grid;
+        gap: 0.45rem;
+        width: 100%;
+        padding: 1rem;
+        text-align: left;
+        color: var(--text);
+      }
+
+      .choice.selected {
+        border-color: rgba(45, 255, 135, 0.72);
+        background:
+          radial-gradient(circle at top right, rgba(45, 255, 135, 0.16), transparent 9rem),
+          rgba(23, 50, 75, 0.9);
+        box-shadow: 0 0 22px rgba(45, 255, 135, 0.12);
+      }
+
+      .choice strong {
+        font-size: 1.05rem;
+      }
+
+      .form {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+      }
+
+      .form label {
+        display: grid;
+        gap: 0.45rem;
+        font-weight: 900;
+      }
+
+      .form input {
+        min-height: 3rem;
+        border: 1px solid var(--line);
+        border-radius: 0.95rem;
+        background: rgba(8, 19, 31, 0.78);
+        color: var(--text);
+        padding: 0.8rem;
+      }
+
+      .progress {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 0.6rem 0;
+        background: linear-gradient(180deg, var(--bg) 70%, rgba(8, 19, 31, 0));
+      }
+
+      .progress span {
+        display: block;
+        margin-bottom: 0.4rem;
+        color: var(--notification-green);
+        font-size: 0.8rem;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .track {
+        height: 0.55rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(234, 247, 255, 0.1);
+      }
+
+      .fill {
+        height: 100%;
+        width: 9%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--radar-green), var(--notification-green));
+      }
+
+      .card {
+        padding: 1rem;
+      }
+
+      .pill-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 1rem;
+      }
+
+      .pill {
+        padding: 0.68rem 0.86rem;
+        border: 1px solid rgba(234, 247, 255, 0.16);
+        border-radius: 999px;
+        background: rgba(234, 247, 255, 0.08);
+        color: var(--text);
+      }
+
+      .pill.selected {
+        border-color: rgba(45, 255, 135, 0.88);
+        background: rgba(45, 255, 135, 0.2);
+        color: var(--notification-green);
+      }
+
+      .custom-entry {
+        display: none;
+        gap: 0.65rem;
+        margin: 0 0 1rem;
+        padding: 0.9rem;
+        border: 1px solid rgba(66, 255, 170, 0.22);
+        border-radius: 1rem;
+        background: rgba(8, 19, 31, 0.46);
+      }
+
+      .custom-entry.active {
+        display: grid;
+      }
+
+      .custom-entry label {
+        display: grid;
+        gap: 0.25rem;
+        font-weight: 900;
+      }
+
+      .custom-entry label span {
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 600;
+      }
+
+      .custom-entry-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.55rem;
+      }
+
+      .custom-entry input {
+        min-width: 0;
+        min-height: 2.65rem;
+        border: 1px solid var(--line);
+        border-radius: 0.85rem;
+        background: rgba(8, 19, 31, 0.78);
+        color: var(--text);
+        padding: 0.72rem 0.8rem;
+      }
+
+      .dashboard {
+        padding-bottom: 5.5rem;
+      }
+
+      .dashboard.active {
+        display: block;
+      }
+
+      .tab {
+        display: none;
+        width: min(100%, 560px);
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .tab.active {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .dash-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .badge {
+        padding: 0.55rem 0.75rem;
+        border: 1px solid rgba(45, 255, 135, 0.28);
+        border-radius: 999px;
+        background: rgba(45, 255, 135, 0.1);
+        color: var(--notification-green);
+        font-size: 0.8rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .briefing,
+      .tracked,
+      .setting {
+        padding: 0.9rem;
+      }
+
+      .briefing h3,
+      .tracked h3 {
+        margin-bottom: 0.35rem;
+      }
+
+      .action {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        min-height: 2.4rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: 1rem;
+        background: rgba(45, 255, 135, 0.14);
+        color: var(--notification-green);
+        font-weight: 900;
+        text-decoration: none;
+      }
+
+      .nav {
+        position: fixed;
+        right: 0.8rem;
+        bottom: 0.8rem;
+        left: 0.8rem;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.35rem;
+        width: min(calc(100% - 1.6rem), 560px);
+        margin: 0 auto;
+        padding: 0.45rem;
+        border: 1px solid var(--line);
+        border-radius: 1.35rem;
+        background: rgba(10, 25, 40, 0.94);
+      }
+
+      .nav button {
+        min-height: 3.45rem;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.66rem;
+      }
+
+      .nav button.active {
+        background: rgba(45, 255, 135, 0.14);
+        color: var(--notification-green);
+      }
+
+      .status {
+        width: fit-content;
+        padding: 0.34rem 0.58rem;
+        border-radius: 999px;
+        background: rgba(45, 255, 135, 0.16);
+        color: var(--notification-green);
+        font-size: 0.76rem;
+        font-weight: 900;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="screen splash active" id="splash">
+        <div class="radar-orbit" aria-hidden="true">
+          <div class="sweep"></div>
+          <div class="dot one"></div>
+          <div class="dot two"></div>
+          <div class="dot three"></div>
+        </div>
+
+        <div>
+          <p class="eyebrow">Personal intelligence dashboard</p>
+          <h1 class="title">Radar</h1>
+          <p>Never Miss What Matters.</p>
+        </div>
+
+        <button class="primary" type="button" data-screen="account">Get Started</button>
+      </section>
+
+      <section class="screen" id="account">
+        <header>
+          <p class="eyebrow">Choose how Radar works for you</p>
+          <h1 class="title">Set up your Radar</h1>
+          <p>Use Radar locally on this device or create an account for syncing, cloud backup, family profiles, and shared interests.</p>
+        </header>
+
+        <div class="choices">
+          <button class="choice" type="button" data-screen="signin">
+            <strong>Sign In / Create Account</strong>
+            <span>Sync across devices and prepare for shared profiles.</span>
+          </button>
+          <button class="choice" type="button" data-screen="onboarding">
+            <strong>Continue Without Account</strong>
+            <span>Store data on this device, work offline, and set up interests now.</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="screen" id="signin">
+        <button class="ghost" type="button" data-screen="account">Back</button>
+        <header>
+          <p class="eyebrow">Account mode</p>
+          <h1 class="title">Sign in or create your Radar account</h1>
+          <p>Account sync is ready for future backend integration.</p>
+        </header>
+
+        <form class="form card" id="signin-form">
+          <label>Email<input type="email" placeholder="you@example.com" required /></label>
+          <label>Password<input type="password" placeholder="Enter your password" required /></label>
+          <button class="primary" type="submit">Sign In</button>
+          <button class="secondary" type="submit">Create Account</button>
+          <button class="ghost" type="button">Forgot Password</button>
+        </form>
+      </section>
+
+      <section class="screen" id="onboarding">
+        <div class="progress">
+          <span id="progress-label">9%</span>
+          <div class="track"><div class="fill" id="progress-fill"></div></div>
+        </div>
+
+        <div id="category-step">
+          <p class="eyebrow">Local mode active</p>
+          <h1 class="title">Choose what is on your Radar</h1>
+          <p>Select multiple categories first. Radar will then walk you through each selected category one at a time.</p>
+          <div class="card" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
+            <strong><span id="category-count">0</span> selected</strong>
+            <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem;">
+              <button class="secondary" id="start-selected" type="button" disabled>Start selected setup</button>
+              <button class="ghost" id="save-selected" type="button" disabled>Save changes</button>
+            </div>
+          </div>
+          <div class="list" id="categories"></div>
+        </div>
+
+        <div class="card" id="flow-step" hidden>
+          <button class="ghost" type="button" id="back-to-categories">Back</button>
+          <p class="eyebrow" id="flow-category">Music</p>
+          <h2 id="flow-title">Select genres</h2>
+          <p id="flow-description">Select genres before artist suggestions appear.</p>
+          <div class="pill-grid" id="flow-options"></div>
+          <form class="custom-entry" id="custom-entry">
+            <label>
+              Add something Radar did not suggest
+              <span>Type a missing band, show, team, creator, product, event, or other favorite.</span>
+            </label>
+            <div class="custom-entry-row">
+              <input id="custom-entry-input" type="text" placeholder="Type an option" />
+              <button class="secondary" type="submit">Add</button>
+            </div>
+          </form>
+          <button class="primary" type="button" id="flow-next">Continue</button>
+        </div>
+      </section>
+
+      <section class="screen dashboard" id="dashboard">
+        <div class="tab active" id="tab-home">
+          <header class="dash-head">
+            <div>
+              <p class="eyebrow">Since yesterday</p>
+              <h1 class="title">Radar Briefing</h1>
+            </div>
+            <span class="badge"><span id="update-count">0</span> updates</span>
+          </header>
+
+          <article class="briefing">
+            <h2>Daily Briefing</h2>
+            <p id="briefing-filter">Your most important actionable updates in one place.</p>
+            <div class="stack" id="home-list"></div>
+          </article>
+        </div>
+
+        <div class="tab" id="tab-radar">
+          <p class="eyebrow">Everything you follow</p>
+          <h1 class="title">Your Radar</h1>
+          <button class="primary" id="manage-radars" type="button">Manage selected radars</button>
+          <div class="stack" id="radar-list"></div>
+        </div>
+
+        <div class="tab" id="tab-discover">
+          <p class="eyebrow">Recommendations</p>
+          <h1 class="title">Discover</h1>
+          <div class="stack" id="discover-list"></div>
+        </div>
+
+        <div class="tab" id="tab-near-me">
+          <p class="eyebrow">Location-based discovery</p>
+          <h1 class="title">Near Me</h1>
+          <p>Concerts, comedy shows, movie showtimes, sports, festivals, air shows, car shows, fairs, creator events, and author signings related to your selections.</p>
+          <div class="stack" id="near-me-list"></div>
+        </div>
+
+        <div class="tab" id="tab-alerts">
+          <p class="eyebrow">Today, week, month, category, priority</p>
+          <h1 class="title">Alerts</h1>
+          <article class="card">
+            <h2><span id="selected-count">5</span> Selected</h2>
+            <div class="pill-grid" id="alert-options"></div>
+          </article>
+        </div>
+
+        <div class="tab" id="tab-settings">
+          <p class="eyebrow">Controls and integrations</p>
+          <h1 class="title">Settings</h1>
+          <div class="grid">
+            <button class="setting">Immediate</button>
+            <button class="setting">Daily Digest</button>
+            <button class="setting">Weekly Digest</button>
+            <button class="setting">Spotify</button>
+            <button class="setting">YouTube</button>
+            <button class="setting">Steam</button>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Main navigation">
+          <button class="active" type="button" data-tab="home">Home</button>
+          <button type="button" data-tab="radar">Radar</button>
+          <button type="button" data-tab="discover">Discover</button>
+          <button type="button" data-tab="near-me">Near Me</button>
+          <button type="button" data-tab="alerts">Alerts</button>
+          <button type="button" data-tab="settings">Settings</button>
+        </nav>
+      </section>
+    </main>
+
+    <script>
+      const screens = ["splash", "account", "signin", "onboarding", "dashboard"];
+      const categories = [
+        {
+          name: "Music",
+          blurb: "Concerts, nearby show alerts, ticket drops, albums, singles, tour announcements, interviews, and podcast appearances.",
+          genres: ["Rock", "Hard Rock", "Metal", "Heavy Metal", "Thrash Metal", "Death Metal", "Black Metal", "Metalcore", "Alternative", "Grunge", "Punk", "Pop Punk", "Country", "Outlaw Country", "Blues", "Jazz", "EDM", "House", "Techno", "Trance", "Rap", "Hip Hop", "Classical", "Folk", "Christian", "Indie"],
+          suggestions: {
+            Rock: ["Foo Fighters", "Pearl Jam", "The Black Keys", "Greta Van Fleet"],
+            "Hard Rock": ["AC/DC", "Aerosmith", "Guns N Roses", "Shinedown"],
+            Metal: ["Metallica", "Tool", "Pantera", "Megadeth", "Gojira", "Lamb of God", "Iron Maiden"],
+            "Heavy Metal": ["Black Sabbath", "Judas Priest", "Iron Maiden", "Dio"],
+            "Thrash Metal": ["Metallica", "Megadeth", "Slayer", "Anthrax", "Testament"],
+            "Death Metal": ["Death", "Cannibal Corpse", "Morbid Angel", "Obituary"],
+            "Black Metal": ["Mayhem", "Emperor", "Darkthrone", "Immortal"],
+            Metalcore: ["Killswitch Engage", "August Burns Red", "Trivium", "Architects"],
+            Alternative: ["Radiohead", "Muse", "The Killers", "Cage the Elephant"],
+            Grunge: ["Nirvana", "Pearl Jam", "Soundgarden", "Alice in Chains"],
+            Punk: ["The Clash", "Ramones", "Rancid", "Bad Religion"],
+            "Pop Punk": ["Blink-182", "Green Day", "Paramore", "Fall Out Boy"],
+            Country: ["Chris Stapleton", "Zach Bryan", "Lainey Wilson", "Luke Combs"],
+            "Outlaw Country": ["Waylon Jennings", "Willie Nelson", "Sturgill Simpson", "Tyler Childers"],
+            Blues: ["Gary Clark Jr.", "Buddy Guy", "Joe Bonamassa", "Tedeschi Trucks Band"],
+            Jazz: ["Kamasi Washington", "Herbie Hancock", "Snarky Puppy", "Esperanza Spalding"],
+            EDM: ["Calvin Harris", "Illenium", "Zedd", "ODESZA"],
+            House: ["Disclosure", "Chris Lake", "Dom Dolla", "Green Velvet"],
+            Techno: ["Charlotte de Witte", "Amelie Lens", "Adam Beyer", "Carl Cox"],
+            Trance: ["Armin van Buuren", "Above & Beyond", "Paul van Dyk", "Gareth Emery"],
+            Rap: ["Kendrick Lamar", "J. Cole", "Drake", "Nas"],
+            "Hip Hop": ["Run The Jewels", "The Roots", "Denzel Curry", "Little Simz"],
+            Classical: ["Yo-Yo Ma", "Hilary Hahn", "Lang Lang", "Max Richter"],
+            Folk: ["Noah Kahan", "The Lumineers", "Bon Iver", "Brandi Carlile"],
+            Christian: ["Lauren Daigle", "For King & Country", "Elevation Worship", "TobyMac"],
+            Indie: ["Phoebe Bridgers", "Tame Impala", "Mitski", "The National"],
+          },
+          preferences: ["Concerts", "Concerts near me", "Ticket price drops", "New albums", "New singles", "Tour announcements", "Podcast appearances", "Interviews"],
+          location: true,
+        },
+        {
+          name: "Movies",
+          blurb: "Trailers, theater releases, streaming releases, digital releases, showtimes, and leaving-streaming alerts.",
+          genres: ["Superhero", "Action", "Horror", "Comedy", "Sci-Fi", "Drama", "Animation", "Documentary"],
+          suggestions: {
+            Superhero: ["Fantastic Four", "Superman", "The Batman Part II", "Avengers: Secret Wars"],
+            Action: ["Mission: Impossible", "John Wick", "Ballerina", "The Old Guard"],
+            Horror: ["Weapons", "The Conjuring", "M3GAN", "A Quiet Place"],
+            Comedy: ["The Naked Gun", "Happy Gilmore", "Only Murders in the Building"],
+            "Sci-Fi": ["Dune", "Project Hail Mary", "Tron: Ares", "Avatar"],
+            Drama: ["Marty Supreme", "The Brutalist", "Sing Sing", "Past Lives"],
+            Animation: ["Inside Out", "Spider-Verse", "Toy Story", "The Wild Robot"],
+            Documentary: ["Formula 1: Drive to Survive", "Planet Earth", "The Last Dance", "Free Solo"],
+          },
+          preferences: ["Trailers", "Theater release", "Streaming release", "Digital release", "Showtimes", "Showtimes near me", "Leaving streaming soon"],
+          location: true,
+        },
+        {
+          name: "TV Shows",
+          blurb: "Episodes, seasons, renewals, cancellations, and streaming availability.",
+          genres: ["Comedy", "Drama", "Sci-Fi", "Fantasy", "Reality", "Crime", "Animation", "Documentary"],
+          suggestions: {
+            Comedy: ["The Bear", "Abbott Elementary", "Hacks", "Only Murders in the Building"],
+            Drama: ["The Last of Us", "Shogun", "Severance", "Yellowstone"],
+            "Sci-Fi": ["Stranger Things", "Foundation", "Silo", "Doctor Who"],
+            Fantasy: ["House of the Dragon", "The Rings of Power", "The Witcher", "Wheel of Time"],
+            Reality: ["Survivor", "The Amazing Race", "Top Chef", "Alone"],
+            Crime: ["True Detective", "Mindhunter", "Fargo", "Mare of Easttown"],
+            Animation: ["Invincible", "X-Men 97", "Bluey", "Rick and Morty"],
+            Documentary: ["Welcome to Wrexham", "Chef Table", "Our Planet", "Quarterback"],
+          },
+          preferences: ["Episodes", "Seasons", "Renewals", "Cancellations", "Streaming availability"],
+        },
+        {
+          name: "Podcasts",
+          blurb: "New episodes, guest appearances, live events, video versions, and special releases.",
+          genres: ["Comedy", "Technology", "History", "Business", "Finance", "Science", "Sports", "Gaming", "News", "True Crime", "Interview Shows", "Storytelling"],
+          suggestions: {
+            Comedy: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend", "This Past Weekend"],
+            Technology: ["Waveform", "Decoder", "Hard Fork", "Darknet Diaries"],
+            History: ["Hardcore History", "The Rest Is History", "American History Tellers"],
+            Business: ["How I Built This", "Acquired", "Masters of Scale"],
+            Finance: ["Planet Money", "The Indicator", "Motley Fool Money"],
+            Science: ["Radiolab", "Science Vs", "Ologies", "StarTalk"],
+            Sports: ["The Bill Simmons Podcast", "Pardon My Take", "The Lowe Post"],
+            Gaming: ["Kinda Funny Gamescast", "Triple Click", "SpawnCast"],
+            News: ["The Daily", "Up First", "Today Explained"],
+            "True Crime": ["Serial", "Crime Junkie", "Casefile", "Criminal"],
+            "Interview Shows": ["WTF with Marc Maron", "Armchair Expert", "Fresh Air"],
+            Storytelling: ["This American Life", "Snap Judgment", "The Moth", "Heavyweight"],
+          },
+          preferences: ["New episodes", "Guest appearances", "Live events", "Live events near me", "Video versions", "Special releases", "Spotify links", "YouTube links", "Apple Podcasts links"],
+          location: true,
+        },
+        {
+          name: "Video Games",
+          blurb: "Release dates, DLC, updates, patches, betas, server outages, events, and developer announcements.",
+          genres: ["RPG", "FPS", "MMO", "Strategy", "Sports", "Simulation", "Survival", "Action"],
+          suggestions: {
+            RPG: ["Elden Ring", "Final Fantasy", "Baldurs Gate 3", "The Witcher"],
+            FPS: ["Call of Duty", "Halo", "Valorant", "Apex Legends"],
+            MMO: ["World of Warcraft", "Final Fantasy XIV", "Guild Wars 2", "The Elder Scrolls Online"],
+            Strategy: ["Civilization", "Age of Empires", "XCOM", "Total War"],
+            Sports: ["EA Sports FC", "Madden NFL", "NBA 2K", "MLB The Show"],
+            Simulation: ["Microsoft Flight Simulator", "The Sims", "Cities: Skylines", "Stardew Valley"],
+            Survival: ["Minecraft", "Rust", "Valheim", "Subnautica"],
+            Action: ["Fortnite", "Helldivers 2", "Grand Theft Auto", "God of War"],
+          },
+          preferences: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages", "Events", "Developer announcements"],
+        },
+        {
+          name: "Sports",
+          blurb: "Games, tickets, standings, schedule changes, injury news, and local sports events.",
+          genres: ["Football", "Basketball", "Baseball", "Hockey", "Soccer", "NASCAR", "Golf", "Combat Sports"],
+          suggestions: {
+            Football: ["Carolina Panthers", "Dallas Cowboys", "Kansas City Chiefs", "NFL"],
+            Basketball: ["Charlotte Hornets", "Boston Celtics", "Golden State Warriors", "NBA"],
+            Baseball: ["Atlanta Braves", "New York Yankees", "Chicago Cubs", "MLB"],
+            Hockey: ["Carolina Hurricanes", "New York Rangers", "Vegas Golden Knights", "NHL"],
+            Soccer: ["Charlotte FC", "USMNT", "Premier League", "MLS"],
+            NASCAR: ["Daytona 500", "Charlotte Motor Speedway", "NASCAR Cup Series"],
+            Golf: ["The Masters", "PGA Tour", "Ryder Cup", "U.S. Open"],
+            "Combat Sports": ["UFC", "WWE", "Boxing", "Bellator"],
+          },
+          preferences: ["Game times", "Games near me", "Ticket availability", "Schedule changes", "Standings", "Injury news", "Local events"],
+          location: true,
+        },
+        {
+          name: "Products & Brands",
+          blurb: "Price drops, restocks, new versions, recalls, and availability.",
+          genres: ["Tools", "Gaming Hardware", "Vehicles", "Makers", "Home Tech", "Outdoor Gear"],
+          suggestions: {
+            Tools: ["Milwaukee", "DeWalt", "Makita", "Ryobi"],
+            "Gaming Hardware": ["Nintendo", "Steam Deck", "PlayStation Portal", "Xbox Series X"],
+            Vehicles: ["Ford", "Toyota", "Jeep", "Tesla"],
+            Makers: ["Laser Engravers", "3D Printers", "CNC Routers", "Glowforge"],
+            "Home Tech": ["Ring", "Nest", "Eufy", "Sonos"],
+            "Outdoor Gear": ["YETI", "Traeger", "Solo Stove", "Blackstone"],
+          },
+          preferences: ["Price drops", "Restocks", "New versions", "Recalls", "Availability"],
+        },
+        {
+          name: "Local Events",
+          blurb: "County fairs, air shows, car shows, comic cons, festivals, markets, craft shows, and food festivals.",
+          genres: ["County Fairs", "Air Shows", "Car Shows", "Comic Cons", "Festivals", "Farmers Markets", "Craft Shows", "Food Festivals"],
+          suggestions: {
+            "County Fairs": ["State Fair", "County Fair", "Livestock Show", "Carnival Night"],
+            "Air Shows": ["Blue Angels Air Show", "Warbird Fly-In", "Aviation Expo", "Airport Open House"],
+            "Car Shows": ["Cars and Coffee", "Classic Auto Show", "Cruise-In", "Truck Expo"],
+            "Comic Cons": ["GalaxyCon", "Comic-Con", "Anime Convention", "Collector Expo"],
+            Festivals: ["Music Festival", "Street Festival", "Arts Festival", "Heritage Festival"],
+            "Farmers Markets": ["Downtown Farmers Market", "Night Market", "Holiday Market", "Local Produce Fair"],
+            "Craft Shows": ["Holiday Craft Show", "Makers Market", "Artisan Fair", "Woodworking Expo"],
+            "Food Festivals": ["BBQ Festival", "Food Truck Rodeo", "Seafood Festival", "Taste of Downtown"],
+          },
+          preferences: ["Event dates", "Events near me", "Ticket availability", "Schedule changes", "Weather alerts", "Add to calendar"],
+          location: true,
+        },
+        {
+          name: "Authors / Books",
+          blurb: "New releases, audiobooks, author signings, interviews, series updates, and recommendations.",
+          genres: ["Fantasy", "Sci-Fi", "Mystery", "Thriller", "History", "Business", "Biography", "Faith"],
+          suggestions: {
+            Fantasy: ["Brandon Sanderson", "Sarah J. Maas", "George R. R. Martin", "Rebecca Yarros"],
+            "Sci-Fi": ["Andy Weir", "Martha Wells", "James S. A. Corey", "Blake Crouch"],
+            Mystery: ["Louise Penny", "Michael Connelly", "Agatha Christie", "Tana French"],
+            Thriller: ["Jack Carr", "James Patterson", "David Baldacci", "Lee Child"],
+            History: ["Erik Larson", "David McCullough", "Doris Kearns Goodwin", "Jon Meacham"],
+            Business: ["Morgan Housel", "Adam Grant", "Simon Sinek", "Cal Newport"],
+            Biography: ["Walter Isaacson", "Ron Chernow", "Michelle Obama", "David Grann"],
+            Faith: ["C. S. Lewis", "Timothy Keller", "Max Lucado", "Lysa TerKeurst"],
+          },
+          preferences: ["New books", "Audiobooks", "Author signings", "Author signings near me", "Interviews", "Series updates", "Recommendations"],
+          location: true,
+        },
+        {
+          name: "YouTubers / Creators",
+          blurb: "Uploads, collaborations, live streams, product drops, tours, and podcast appearances.",
+          genres: ["Tech", "Gaming", "Comedy", "DIY", "Cars", "Outdoors", "Food", "Education"],
+          suggestions: {
+            Tech: ["MKBHD", "Linus Tech Tips", "iJustine", "Mrwhosetheboss"],
+            Gaming: ["Markiplier", "Jacksepticeye", "GameSpot", "Kinda Funny"],
+            Comedy: ["Good Mythical Morning", "Dropout", "Try Guys", "Dude Perfect"],
+            DIY: ["Adam Savage Tested", "I Like To Make Stuff", "April Wilkerson", "Make Something"],
+            Cars: ["Donut Media", "Doug DeMuro", "Throttle House", "Hagerty"],
+            Outdoors: ["Outdoor Boys", "REI", "MeatEater", "Adventure Archives"],
+            Food: ["Binging with Babish", "Joshua Weissman", "Sorted Food", "Claire Saffitz"],
+            Education: ["Veritasium", "Smarter Every Day", "Kurzgesagt", "CrashCourse"],
+          },
+          preferences: ["New videos", "Collaborations", "Live streams", "Creator events near me", "Product drops", "Tours", "Podcast appearances"],
+          location: true,
+        },
+        {
+          name: "Comedians",
+          blurb: "Tour dates, nearby show alerts, specials, podcast appearances, TV appearances, and ticket/streaming links.",
+          genres: ["Clean Comedy", "Storytelling", "Observational", "Blue Collar", "Podcast Hosts", "Late Night", "Improv"],
+          suggestions: {
+            "Clean Comedy": ["Nate Bargatze", "Jim Gaffigan", "Brian Regan", "Leanne Morgan"],
+            Storytelling: ["Mike Birbiglia", "Hasan Minhaj", "John Mulaney", "Taylor Tomlinson"],
+            Observational: ["Jerry Seinfeld", "Sebastian Maniscalco", "Tom Papa", "Gary Gulman"],
+            "Blue Collar": ["Jeff Foxworthy", "Larry the Cable Guy", "Bill Engvall", "Ron White"],
+            "Podcast Hosts": ["Theo Von", "Marc Maron", "Bert Kreischer", "Tom Segura"],
+            "Late Night": ["John Oliver", "Seth Meyers", "Stephen Colbert", "Jimmy Fallon"],
+            Improv: ["Whose Line Is It Anyway", "Second City", "Upright Citizens Brigade", "Middleditch and Schwartz"],
+          },
+          preferences: ["Tour dates", "Comedy shows near me", "Specials", "Podcast appearances", "TV appearances", "Ticketmaster links", "Spotify links", "YouTube links", "Apple Podcasts links", "Netflix links"],
+          location: true,
+        },
+      ];
+      const alertGroups = [
+        { name: "Music", options: ["Concerts", "Concerts near me", "New albums", "New singles", "Tour announcements"] },
+        { name: "Movies & TV", options: ["Trailers", "Theater release", "Streaming release", "Showtimes near me", "New episodes", "Renewals"] },
+        { name: "Games", options: ["Release dates", "DLC", "Updates", "Patches", "Betas", "Server outages"] },
+        { name: "Podcasts", options: ["New episodes", "Guest appearances", "Live events", "Live events near me", "Spotify links", "YouTube links", "Apple Podcasts links"] },
+        { name: "Products", options: ["Price drops", "Restocks", "New versions", "Recalls", "Availability"] },
+        { name: "Local Events", options: ["Events near me", "Festivals", "Air shows", "Car shows", "Fairs", "Add to calendar"] },
+        { name: "Radar Features", options: ["Daily digest", "High priority alerts", "Recommendations", "Near me", "Watchlist summaries"] },
+      ];
+      const radii = ["25 miles", "50 miles", "100 miles", "250 miles", "500 miles"];
+      const briefingData = [
+        {
+          category: "Music",
+          title: "Metallica announced a Chicago show",
+          detail: "Presale opens tomorrow at 10:00 AM.",
+          action: "Buy Tickets",
+          relatedTo: ["Metallica"],
+        },
+        {
+          category: "Comedians",
+          title: "Nate Bargatze appeared on SmartLess",
+          detail: "New interview available on Spotify, YouTube, and Apple Podcasts.",
+          action: "Listen",
+          relatedTo: ["Nate Bargatze"],
+        },
+        {
+          category: "Movies",
+          title: "Fantastic Four tickets are available",
+          detail: "Nearby theaters added opening weekend showtimes.",
+          action: "View Showtimes",
+          relatedTo: ["Fantastic Four"],
+        },
+        {
+          category: "Video Games",
+          title: "Fortnite patch released",
+          detail: "Balance changes, new event quests, and outage notes are live.",
+          action: "Read Patch Notes",
+          relatedTo: ["Fortnite"],
+        },
+        {
+          category: "Products & Brands",
+          title: "Milwaukee restock alert",
+          detail: "Selected tools are back in stock at nearby retailers.",
+          action: "View Product",
+          relatedTo: ["Milwaukee"],
+        },
+        {
+          category: "Local Events",
+          title: "Food festival added near you",
+          detail: "A weekend food truck event matches your local event interests.",
+          action: "Add To Calendar",
+          relatedTo: ["Food Festivals"],
+        },
+        {
+          category: "TV Shows",
+          title: "New streaming availability found",
+          detail: "Radar found a season update for one of your selected TV interests.",
+          action: "Watch",
+          relatedTo: ["The Last of Us", "Shogun", "Severance", "Yellowstone"],
+        },
+        {
+          category: "Podcasts",
+          title: "New podcast episode matched",
+          detail: "A new episode matches your selected podcast genres.",
+          action: "Listen",
+          relatedTo: ["SmartLess", "The Nateland Podcast", "Conan OBrien Needs a Friend", "This Past Weekend"],
+        },
+        {
+          category: "Authors / Books",
+          title: "Book release signal found",
+          detail: "Radar found a release update in one of your selected book interests.",
+          action: "View Release",
+          relatedTo: ["Brandon Sanderson", "Sarah J. Maas", "Andy Weir", "Jack Carr"],
+        },
+        {
+          category: "YouTubers / Creators",
+          title: "Creator upload matched",
+          detail: "A new creator update matches your selected creator areas.",
+          action: "Watch",
+          relatedTo: ["MKBHD", "Linus Tech Tips", "Markiplier", "Good Mythical Morning"],
+        },
+        {
+          category: "Sports",
+          title: "Sports schedule update found",
+          detail: "Radar found a schedule signal for your selected sports interests.",
+          action: "View Details",
+          relatedTo: ["Carolina Panthers", "Charlotte Hornets", "Charlotte FC", "NFL"],
+        },
+      ];
+      const recommendationData = [
+        {
+          title: "Gojira",
+          detail: "A strong metal match based on your selected artists.",
+          requiresAny: ["Tool", "Pantera", "Metallica"],
+        },
+        {
+          title: "Mastodon",
+          detail: "Recommended from your heavy and progressive metal selections.",
+          requiresAny: ["Tool", "Gojira", "Lamb of God"],
+        },
+        {
+          title: "Lamb of God",
+          detail: "A high-signal recommendation from your metal selections.",
+          requiresAny: ["Metallica", "Megadeth", "Pantera"],
+        },
+      ];
+      const nearMeDiscoveryData = [
+        {
+          category: "Music",
+          title: "Summer amphitheater concert series",
+          detail: "A nearby outdoor concert series matches your music interests, but is not already on your Radar.",
+          action: "View Nearby Shows",
+          href: "https://www.ticketmaster.com/search?q=concerts%20near%20me",
+          relatedCategories: ["Music"],
+          source: "Ticketmaster / Bandsintown",
+        },
+        {
+          category: "Comedians",
+          title: "Weekend comedy club lineup",
+          detail: "Local comedy shows are coming up near you based on your comedy selections.",
+          action: "View Comedy Shows",
+          href: "https://www.ticketmaster.com/search?q=comedy%20near%20me",
+          relatedCategories: ["Comedians", "Podcasts"],
+          source: "Ticketmaster / Venue calendars",
+        },
+        {
+          category: "Local Events",
+          title: "Food truck festival downtown",
+          detail: "A food festival is happening nearby and may fit your local event interests.",
+          action: "View Event",
+          href: "https://www.google.com/search?q=food%20festival%20near%20me",
+          relatedCategories: ["Local Events"],
+          source: "Local event feeds",
+        },
+        {
+          category: "Sports",
+          title: "Minor league baseball homestand",
+          detail: "A nearby sports event may be relevant even though this team is not on your Radar yet.",
+          action: "View Tickets",
+          href: "https://www.ticketmaster.com/search?q=sports%20near%20me",
+          relatedCategories: ["Sports"],
+          source: "Ticketmaster / Team calendars",
+        },
+        {
+          category: "Movies",
+          title: "Retro movie night nearby",
+          detail: "A theater event near you matches your movie interests without being one of your tracked titles.",
+          action: "View Showtimes",
+          href: "https://www.google.com/search?q=movie%20showtimes%20near%20me",
+          relatedCategories: ["Movies"],
+          source: "Theater showtimes",
+        },
+        {
+          category: "Authors / Books",
+          title: "Local author signing",
+          detail: "A signing event near you may match your book interests and is not already tracked.",
+          action: "View Signing",
+          href: "https://www.google.com/search?q=author%20signing%20near%20me",
+          relatedCategories: ["Authors / Books"],
+          source: "Bookstore event feeds",
+        },
+        {
+          category: "YouTubers / Creators",
+          title: "Creator meetup nearby",
+          detail: "A creator-focused event near you may fit your creator selections.",
+          action: "View Event",
+          href: "https://www.google.com/search?q=creator%20meetup%20near%20me",
+          relatedCategories: ["YouTubers / Creators"],
+          source: "Creator / venue feeds",
+        },
+      ];
+      const PREVIEW_STORAGE_KEY = "radar-preview-profile-v1";
+      const storedPreviewProfile = (() => {
+        try {
+          return JSON.parse(localStorage.getItem(PREVIEW_STORAGE_KEY) || "{}");
+        } catch {
+          return {};
+        }
+      })();
+      let categoryIndex = 0;
+      let step = "genres";
+      let selectedCategoryIndexes = storedPreviewProfile.selectedCategoryIndexes || [];
+      let onboardingQueue = [];
+      let queuePosition = 0;
+      let completedSelections = storedPreviewProfile.completedSelections || [];
+      let hasOpenedDashboard = Boolean(storedPreviewProfile.hasOpenedDashboard);
+      let selectedGenres = [];
+      let selectedSuggestions = [];
+      let selectedPreferences = [];
+      let selectedRadius = "50 miles";
+      let selectedAlerts = storedPreviewProfile.selectedAlerts || ["Concerts", "New albums", "Trailers", "Updates", "Daily digest"];
+      const subscriptionTier = storedPreviewProfile.subscriptionTier || "premium";
+      let trackedStatuses = storedPreviewProfile.trackedStatuses || {};
+      let sonarAudioContext = null;
+
+      function savePreviewProfile() {
+        localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify({
+          selectedCategoryIndexes,
+          completedSelections,
+          hasOpenedDashboard,
+          selectedAlerts,
+          subscriptionTier,
+          trackedStatuses,
+          savedAt: new Date().toISOString(),
+        }));
+      }
+
+      function showScreen(id) {
+        screens.forEach((screen) => document.getElementById(screen).classList.toggle("active", screen === id));
+      }
+
+      function enableSonarAudio() {
+        if (sonarAudioContext) {
+          return;
+        }
+
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          return;
+        }
+
+        sonarAudioContext = new AudioContextClass();
+      }
+
+      function playSonarPing() {
+        if (!sonarAudioContext) {
+          return;
+        }
+
+        if (sonarAudioContext.state === "suspended") {
+          sonarAudioContext.resume();
+        }
+
+        const oscillator = sonarAudioContext.createOscillator();
+        const gain = sonarAudioContext.createGain();
+        const start = sonarAudioContext.currentTime;
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(720, start);
+        oscillator.frequency.exponentialRampToValueAtTime(140, start + 0.42);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.08, start + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+
+        oscillator.connect(gain);
+        gain.connect(sonarAudioContext.destination);
+        oscillator.start(start);
+        oscillator.stop(start + 0.44);
+      }
+
+      function renderCategories() {
+        const container = document.getElementById("categories");
+        container.innerHTML = "";
+        document.getElementById("category-count").textContent = selectedCategoryIndexes.length;
+        document.getElementById("start-selected").disabled = selectedCategoryIndexes.length === 0;
+        document.getElementById("save-selected").disabled = selectedCategoryIndexes.length === 0 && !hasOpenedDashboard;
+        categories.forEach((category, index) => {
+          const button = document.createElement("button");
+          button.className = `choice ${selectedCategoryIndexes.includes(index) ? "selected" : ""}`;
+          button.type = "button";
+          button.innerHTML = `<strong>${category.name}</strong><span>${category.blurb}</span>`;
+          button.addEventListener("click", () => {
+            if (selectedCategoryIndexes.includes(index)) {
+              selectedCategoryIndexes = selectedCategoryIndexes.filter((categoryNumber) => categoryNumber !== index);
+              completedSelections = completedSelections.filter((selection) => selection.category !== category.name);
+              Object.keys(trackedStatuses).forEach((key) => {
+                if (key.startsWith(`${category.name}:`.toLowerCase())) {
+                  delete trackedStatuses[key];
+                }
+              });
+            } else {
+              selectedCategoryIndexes = [...selectedCategoryIndexes, index];
+            }
+            savePreviewProfile();
+            renderCategories();
+          });
+          container.appendChild(button);
+        });
+      }
+
+      function updateProgress(percent) {
+        document.getElementById("progress-label").textContent = `${percent}%`;
+        document.getElementById("progress-fill").style.width = `${percent}%`;
+      }
+
+      function interestKey(category, item) {
+        return `${category}:${item}`.toLowerCase();
+      }
+
+      function statusLabel(status) {
+        if (status === "watchlist") {
+          return "Watchlist";
+        }
+
+        if (status === "paused") {
+          return "Paused";
+        }
+
+        return "Following";
+      }
+
+      function startSelectedSetup() {
+        if (selectedCategoryIndexes.length === 0) {
+          return;
+        }
+
+        const completedNames = new Set(completedSelections.map((selection) => selection.category));
+        onboardingQueue = selectedCategoryIndexes.filter((index) => !completedNames.has(categories[index].name));
+        if (onboardingQueue.length === 0) {
+          renderDashboard();
+          showScreen("dashboard");
+          return;
+        }
+
+        queuePosition = 0;
+        beginCategory(onboardingQueue[queuePosition]);
+      }
+
+      function beginCategory(index) {
+        categoryIndex = index;
+        step = "genres";
+        selectedGenres = [];
+        selectedSuggestions = [];
+        selectedPreferences = [];
+        selectedRadius = "50 miles";
+        document.getElementById("category-step").hidden = true;
+        document.getElementById("flow-step").hidden = false;
+        renderFlow();
+      }
+
+      function renderFlow() {
+        const category = categories[categoryIndex];
+        const options = document.getElementById("flow-options");
+        options.innerHTML = "";
+        document.getElementById("flow-category").textContent = category.name;
+
+        let title = "Select genres";
+        let description = "Suggestions are hidden until you select at least one genre.";
+        let list = category.genres;
+        let selected = selectedGenres;
+        const queueLength = Math.max(onboardingQueue.length, 1);
+        const stepProgress = step === "genres" ? 0.2 : step === "suggestions" ? 0.42 : step === "preferences" ? 0.64 : step === "location" ? 0.82 : 0.95;
+        let progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
+
+        if (step === "suggestions") {
+          title = "Generated suggestions";
+          description = "These are generated only from selected genres.";
+          list = [...new Set([...selectedGenres.flatMap((genre) => category.suggestions[genre] || []), ...selectedSuggestions])];
+          selected = selectedSuggestions;
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
+        }
+
+        if (step === "preferences") {
+          title = "What should Radar track?";
+          description = "Choose actionable notification types.";
+          list = category.preferences;
+          selected = selectedPreferences;
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
+        }
+
+        if (step === "location") {
+          title = "Nearby alert radius";
+          description = "Choose how far Radar should look for in-person alerts like concerts, comedy shows, showtimes, sports, signings, creator events, and local events.";
+          list = radii;
+          selected = [selectedRadius];
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
+        }
+
+        if (step === "summary") {
+          title = `${category.name} summary`;
+          const remaining = onboardingQueue.length - queuePosition - 1;
+          description = remaining > 0
+            ? `This category is ready. Save it and continue with ${remaining} more selected ${remaining === 1 ? "category" : "categories"}.`
+            : "This is the last selected category. Saving it will open your filtered dashboard.";
+          list = [...selectedGenres, ...selectedSuggestions, ...selectedPreferences, ...(category.location ? [selectedRadius] : [])];
+          selected = list;
+          progress = Math.round(((queuePosition + stepProgress) / queueLength) * 100);
+        }
+
+        document.getElementById("flow-title").textContent = title;
+        document.getElementById("flow-description").textContent = description;
+        document.getElementById("custom-entry").classList.toggle("active", step === "suggestions");
+        updateProgress(Math.min(progress, 94));
+
+        if (list.length === 0) {
+          options.innerHTML = `<p>No suggestions are shown until a genre is selected.</p>`;
+        }
+
+        list.forEach((item) => {
+          const button = document.createElement("button");
+          button.className = `pill ${selected.includes(item) ? "selected" : ""}`;
+          button.type = "button";
+          button.textContent = item;
+          button.addEventListener("click", () => toggleFlowItem(item));
+          options.appendChild(button);
+        });
+
+        document.getElementById("flow-next").textContent = step === "summary"
+          ? (queuePosition < onboardingQueue.length - 1 ? "Save and continue" : "Save and open filtered Radar")
+          : "Continue";
+      }
+
+      function toggleFlowItem(item) {
+        if (step === "location") {
+          selectedRadius = item;
+          renderFlow();
+          return;
+        }
+
+        const bucket = step === "genres" ? selectedGenres : step === "suggestions" ? selectedSuggestions : selectedPreferences;
+        const index = bucket.indexOf(item);
+        if (index >= 0) {
+          bucket.splice(index, 1);
+        } else {
+          bucket.push(item);
+        }
+        renderFlow();
+      }
+
+      function addCustomSuggestion(value) {
+        const suggestion = value.trim();
+        if (!suggestion) {
+          return;
+        }
+
+        if (!selectedSuggestions.some((item) => item.toLowerCase() === suggestion.toLowerCase())) {
+          selectedSuggestions.push(suggestion);
+        }
+        renderFlow();
+      }
+
+      function nextFlowStep() {
+        if (step === "genres") {
+          step = "suggestions";
+        } else if (step === "suggestions") {
+          step = "preferences";
+        } else if (step === "preferences") {
+          const category = categories[categoryIndex];
+          step = category.location ? "location" : "summary";
+        } else if (step === "location") {
+          step = "summary";
+        } else {
+          completeCurrentCategory();
+          return;
+        }
+        renderFlow();
+      }
+
+      function completeCurrentCategory() {
+        const category = categories[categoryIndex];
+        completedSelections = completedSelections.filter((selection) => selection.category !== category.name);
+        completedSelections.push({
+          category: category.name,
+          genres: [...selectedGenres],
+          suggestions: [...selectedSuggestions],
+          preferences: [...selectedPreferences],
+          radius: category.location ? selectedRadius : "",
+        });
+
+        if (queuePosition < onboardingQueue.length - 1) {
+          queuePosition += 1;
+          beginCategory(onboardingQueue[queuePosition]);
+          return;
+        }
+
+        renderDashboard();
+        showScreen("dashboard");
+        hasOpenedDashboard = true;
+        savePreviewProfile();
+      }
+
+      function actionForCategory(category) {
+        if (category === "Podcasts") {
+          return "Find Latest Episode";
+        }
+
+        if (category === "Music" || category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return category === "Music" ? "View Tour Dates" : "View Tickets";
+        }
+
+        if (category === "Movies") {
+          return "View Showtimes";
+        }
+
+        if (category === "TV Shows" || category === "YouTubers / Creators") {
+          return "Watch";
+        }
+
+        if (category === "Podcasts") {
+          return "Listen";
+        }
+
+        if (category === "Video Games") {
+          return "Read Patch Notes";
+        }
+
+        if (category === "Products & Brands") {
+          return "View Product";
+        }
+
+        if (category === "Authors / Books") {
+          return "View Release";
+        }
+
+        return "View Update";
+      }
+
+      function sourceForCategory(category) {
+        if (category === "Podcasts") {
+          return "Spotify / Apple Podcasts / YouTube";
+        }
+
+        if (category === "Music") {
+          return "Bandsintown / Ticketmaster";
+        }
+
+        if (category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return "Ticketmaster / Event providers";
+        }
+
+        if (category === "Movies") {
+          return "TMDB / Theater showtimes";
+        }
+
+        if (category === "Video Games") {
+          return "Steam / IGDB / Publisher feeds";
+        }
+
+        if (category === "Products & Brands") {
+          return "Retail and recall feeds";
+        }
+
+        if (category === "Authors / Books") {
+          return "Book release and event feeds";
+        }
+
+        if (category === "YouTubers / Creators") {
+          return "YouTube / Creator feeds";
+        }
+
+        return "Connected services";
+      }
+
+      function linkForCategory(category, item) {
+        const encodedItem = encodeURIComponent(item);
+
+        if (category === "Podcasts") {
+          return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item} latest episode guest`)}`;
+        }
+
+        if (category === "Music" || category === "Comedians" || category === "Sports" || category === "Local Events") {
+          return `https://www.ticketmaster.com/search?q=${encodedItem}`;
+        }
+
+        if (category === "Movies") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} showtimes near me`)}`;
+        }
+
+        if (category === "TV Shows") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} streaming availability`)}`;
+        }
+
+        if (category === "Video Games") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} patch notes release date`)}`;
+        }
+
+        if (category === "Products & Brands") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} price restock availability`)}`;
+        }
+
+        if (category === "Authors / Books") {
+          return `https://www.google.com/search?q=${encodeURIComponent(`${item} book release signing`)}`;
+        }
+
+        if (category === "YouTubers / Creators") {
+          return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${item} latest`)}`;
+        }
+
+        return `https://www.google.com/search?q=${encodedItem}`;
+      }
+
+      function integrationTitleForCategory(category, item) {
+        if (category === "Podcasts") {
+          return `${item}: latest episode monitoring`;
+        }
+
+        if (category === "Music") {
+          return `${item}: tour date monitoring`;
+        }
+
+        if (category === "Comedians") {
+          return `${item}: show date monitoring`;
+        }
+
+        if (category === "Movies") {
+          return `${item}: showtime and release monitoring`;
+        }
+
+        return `${item}: live data monitoring`;
+      }
+
+      function integrationDetailForCategory(selection, item) {
+        if (selection.category === "Podcasts") {
+          return "Radar will pull new episode drops, guest names, release timing, and links from podcast and video providers when connected.";
+        }
+
+        if (selection.category === "Music") {
+          return `Radar will check tour dates and ticket sources${selection.radius ? ` within ${selection.radius}` : ""} for this selected artist.`;
+        }
+
+        if (selection.category === "Comedians") {
+          return `Radar will check comedy show dates and ticket sources${selection.radius ? ` within ${selection.radius}` : ""} for this selected comedian.`;
+        }
+
+        const nearMeEnabled = selection.preferences.some((preference) => preference.toLowerCase().includes("near me"));
+        return nearMeEnabled && selection.radius
+          ? `Radar will watch for nearby in-person updates within ${selection.radius} and track ${selection.preferences.slice(0, 3).join(", ")}.`
+          : `Radar will check connected providers for ${selection.preferences.slice(0, 3).join(", ") || "updates"} tied to this selection.`;
+      }
+
+      function renderDashboard() {
+        hasOpenedDashboard = true;
+        savePreviewProfile();
+        const selectedNames = completedSelections.map((selection) => selection.category);
+        const selectedInterestNames = new Set(
+          completedSelections
+            .flatMap((selection) => [...selection.suggestions, ...selection.genres])
+            .map((item) => item.toLowerCase())
+        );
+        const filteredBriefings = briefingData.filter((item) =>
+          item.relatedTo.some((relatedItem) => selectedInterestNames.has(relatedItem.toLowerCase()))
+        );
+        const generatedBriefings = completedSelections.flatMap((selection) => {
+          const followedItems = [...selection.suggestions, ...selection.genres].slice(0, 3);
+          return followedItems.map((item) => ({
+            category: selection.category,
+            title: integrationTitleForCategory(selection.category, item),
+            detail: integrationDetailForCategory(selection, item),
+            action: actionForCategory(selection.category),
+            href: linkForCategory(selection.category, item),
+            source: sourceForCategory(selection.category),
+          }));
+        });
+        const homeItems = [...filteredBriefings, ...generatedBriefings];
+
+        document.getElementById("update-count").textContent = homeItems.length;
+        document.getElementById("briefing-filter").textContent = selectedNames.length
+          ? `Filtered for ${selectedNames.join(", ")}.`
+          : "Your most important actionable updates in one place.";
+        document.getElementById("home-list").innerHTML = homeItems.length ? homeItems.map((item) => `
+          <article class="tracked">
+            <p class="eyebrow">${item.category}</p>
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            ${item.source ? `<p class="eyebrow">Provider-ready: ${item.source}</p>` : ""}
+            ${item.href ? `<a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>` : `<button class="action">${item.action}</button>`}
+          </article>
+        `).join("") : `
+          <article class="tracked">
+            <h3>No updates yet</h3>
+            <p>Radar will only show briefing items tied to the exact interests you selected.</p>
+          </article>
+        `;
+
+        const radarItems = completedSelections.flatMap((selection) =>
+          [...selection.suggestions, ...selection.genres].slice(0, 5).map((item) => ({ selection, item }))
+        );
+        document.getElementById("radar-list").innerHTML = radarItems.length ? radarItems.map(({ selection, item }) => {
+          const key = interestKey(selection.category, item);
+          const status = trackedStatuses[key] || "following";
+          return `
+            <article class="tracked">
+              <p class="eyebrow">${selection.category}</p>
+              <h3>${item}</h3>
+              <p>${selection.preferences.join(", ")}</p>
+              ${selection.radius ? `<p>Nearby radius: ${selection.radius}</p>` : ""}
+              <span class="status">${statusLabel(status)}</span>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.75rem;">
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="following">Following</button>
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="watchlist">Watchlist</button>
+                <button class="action" type="button" data-status-key="${encodeURIComponent(key)}" data-status-value="paused">Pause</button>
+                <button class="action" type="button" data-remove-key="${encodeURIComponent(key)}">Remove</button>
+              </div>
+            </article>
+          `;
+        }).join("") : `
+          <article class="tracked">
+            <h3>No radars selected</h3>
+            <p>Use Manage selected radars to add categories and interests.</p>
+          </article>
+        `;
+        document.querySelectorAll("[data-status-key]").forEach((button) => {
+          button.addEventListener("click", () => {
+            trackedStatuses[decodeURIComponent(button.dataset.statusKey)] = button.dataset.statusValue;
+            savePreviewProfile();
+            renderDashboard();
+          });
+        });
+        document.querySelectorAll("[data-remove-key]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const [category, item] = decodeURIComponent(button.dataset.removeKey).split(":");
+            completedSelections = completedSelections.map((selection) => selection.category.toLowerCase() === category
+              ? {
+                ...selection,
+                suggestions: selection.suggestions.filter((value) => value.toLowerCase() !== item),
+                genres: selection.genres.filter((value) => value.toLowerCase() !== item),
+              }
+              : selection
+            );
+            delete trackedStatuses[decodeURIComponent(button.dataset.removeKey)];
+            savePreviewProfile();
+            renderDashboard();
+          });
+        });
+
+        const recommendations = recommendationData.filter((item) =>
+          item.requiresAny.some((requiredItem) => selectedInterestNames.has(requiredItem.toLowerCase()))
+        );
+        const trackedTitles = new Set([...selectedInterestNames]);
+        const nearbyDiscoveries = nearMeDiscoveryData.filter((item) =>
+          item.relatedCategories.some((category) => selectedNames.includes(category)) &&
+          !trackedTitles.has(item.title.toLowerCase())
+        );
+        const nearMeCards = nearbyDiscoveries.length ? nearbyDiscoveries.map((item) => `
+          <article class="tracked">
+            <p class="eyebrow">${item.category}</p>
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            <p class="eyebrow">Discovery source: ${item.source}</p>
+            <a class="action" href="${item.href}" rel="noreferrer" target="_blank">${item.action}</a>
+          </article>
+        `).join("") : `
+          <article class="tracked">
+            <h3>No nearby discoveries yet</h3>
+            <p>Select in-person interests like concerts, comedy, movies, sports, books, creators, or local events to discover nearby things not already on your Radar.</p>
+          </article>
+        `;
+        const recommendationMarkup = recommendations.length ? recommendations.map((item) => `
+          <article class="tracked">
+            <h3>${item.title}</h3>
+            <p>${item.detail}</p>
+            <button class="action">Add to Radar</button>
+          </article>
+        `).join("") : `
+          <article class="tracked">
+            <h3>No recommendations yet</h3>
+            <p>Discover will only recommend items after Radar has a specific selected interest to compare against.</p>
+          </article>
+        `;
+        const nearMeMarkup = nearbyDiscoveries.length ? `
+          <article class="tracked">
+            <p class="eyebrow">Near Me</p>
+            <h3>Things happening near you</h3>
+            <p>Related to your selections, but not already on your Radar.</p>
+          </article>
+          ${nearMeCards}
+        ` : `
+          <article class="tracked">
+            <p class="eyebrow">Near Me</p>
+            <h3>No nearby discoveries yet</h3>
+            <p>Select in-person interests like concerts, comedy, movies, sports, books, creators, or local events to discover nearby things not already on your Radar.</p>
+          </article>
+        `;
+        document.getElementById("discover-list").innerHTML = `${recommendationMarkup}${nearMeMarkup}`;
+        document.getElementById("near-me-list").innerHTML = nearMeCards;
+      }
+
+      function renderAlerts() {
+        const container = document.getElementById("alert-options");
+        container.innerHTML = "";
+        alertGroups.forEach((group) => {
+          const groupNode = document.createElement("section");
+          groupNode.innerHTML = `<h2>${group.name}</h2><div class="pill-grid"></div>`;
+          const grid = groupNode.querySelector(".pill-grid");
+          group.options.forEach((alert) => {
+            const button = document.createElement("button");
+            button.className = `pill ${selectedAlerts.includes(alert) ? "selected" : ""}`;
+            button.type = "button";
+            button.textContent = alert;
+            button.addEventListener("click", () => {
+              selectedAlerts = selectedAlerts.includes(alert) ? selectedAlerts.filter((item) => item !== alert) : [...selectedAlerts, alert];
+              document.getElementById("selected-count").textContent = selectedAlerts.length;
+              savePreviewProfile();
+              renderAlerts();
+            });
+            grid.appendChild(button);
+          });
+          container.appendChild(groupNode);
+        });
+      }
+
+      document.querySelectorAll("[data-screen]").forEach((button) => {
+        button.addEventListener("click", () => showScreen(button.dataset.screen));
+      });
+
+      document.getElementById("splash").addEventListener("pointerdown", enableSonarAudio);
+      document.querySelector(".sweep").addEventListener("animationiteration", playSonarPing);
+
+      document.getElementById("signin-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        showScreen("onboarding");
+      });
+
+      document.getElementById("custom-entry").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = document.getElementById("custom-entry-input");
+        addCustomSuggestion(input.value);
+        input.value = "";
+      });
+
+      document.getElementById("back-to-categories").addEventListener("click", () => {
+        document.getElementById("flow-step").hidden = true;
+        document.getElementById("category-step").hidden = false;
+        updateProgress(9);
+        renderCategories();
+      });
+
+      document.getElementById("start-selected").addEventListener("click", startSelectedSetup);
+      document.getElementById("save-selected").addEventListener("click", () => {
+        renderDashboard();
+        showScreen("dashboard");
+        hasOpenedDashboard = true;
+        savePreviewProfile();
+      });
+      document.getElementById("manage-radars").addEventListener("click", () => {
+        document.getElementById("flow-step").hidden = true;
+        document.getElementById("category-step").hidden = false;
+        renderCategories();
+        updateProgress(0);
+        showScreen("onboarding");
+      });
+      document.getElementById("flow-next").addEventListener("click", nextFlowStep);
+
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-tab]").forEach((nav) => nav.classList.toggle("active", nav === button));
+          document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+          document.getElementById(`tab-${button.dataset.tab}`).classList.add("active");
+        });
+      });
+
+      renderCategories();
+      renderAlerts();
+      if (hasOpenedDashboard) {
+        renderDashboard();
+        showScreen("dashboard");
+      }
+    </script>
+  </body>
+</html>
